@@ -1,0 +1,564 @@
+# Plan — Factorio Green-Science Policy Improvement
+
+## Context
+
+Internship evaluation (evaluator: Morgan). Deadline: <2 days from 2026-08-07 (target 2026-08-09). Three tasks from `unfizzbuzzed_out.bin`:
+
+1. Demonstrate exact policy improvement + iteration on a simple pretext MDP (Sutton & Barto §4.2/4.3).
+2. Build a measurable Mini-Factorio environment where a cheap baseline LLM proposes floorplan edits to increase green science output. Show the baseline is not already optimal.
+3. Use GRPO (DeepSeekMath) to iteratively improve the policy. Show `mean_reward(policy_final) >> per-iteration delta`.
+
+Morgan's clarification: any approach is fine if solutions translate back to the reference Factorio engine and validation performance is measurable. Multiple metrics welcome (materials, area, tech-tree parts).
+
+Repo currently has only planning docs (`Andrii_plan.md`, `plan.md`, `claude.md`) and the task file `unfizzbuzzed_out.bin`. No code yet — this is a from-scratch implementation.
+
+---
+
+## Confirmed decisions (locked by user)
+
+| Area | Decision |
+|---|---|
+| Compute | Colab Pro ($10) for GRPO training; local M2 (16GB) for Task 1, simulator, baseline inference, plots, writeup |
+| Task 1 environment | Grid-agnostic gridworld up to 20x20; stochastic policies + stochastic transitions supported |
+| Task 1 method | Exact policy evaluation (linear system) + **greedy improvement only** (Eq 4.9). Ties in argmax are apportioned uniformly across maximizing actions (allowed by Sutton-Barto's stochastic extension). No ε-greedy. Initial policies may still be stochastic (uniform random). |
+| FLE validation | **Required deliverable, closes Morgan's explicit "translates back to reference engine" requirement.** Two parts: (A) **Translation validity** — every top-K layout must build in FLE without error (target 100%); (B) **Performance agreement** — `Pearson r ≥ 0.9` (ranking agreement, matters for GRPO signal) AND `MAPE ≤ 20%` (absolute agreement, matters for writeup claims). Failures in either part gate the ship. |
+| Reward reporting | Training uses the weighted composite reward (single scalar to GRPO). **Final report shows raw individual metrics separately per checkpoint**: mean green-science rate (per second), mean materials used, mean total cells occupied, mean machine count, and valid-output rate. Example row: `green_science=12/s, materials=340, area=86 cells, machines=18, valid_outputs=82%`. Composite reward is shown alongside as a summary column. |
+| Task 2 simulator | Static rate-based throughput solver; later cross-validated against FLE (Factorio Learning Environment) from GitHub |
+| Task 2 numbers | Real Factorio rates and recipes |
+| Task 2 belts | **Belts are first-class entities** placed on the grid by the model. A belt is a directed line of tiles carrying one item type. **Multiple producers can dump onto and multiple consumers can pull from a single belt** (the real-Factorio "bus" pattern). Belt has capacity (yellow belt = 15 items/sec). Allocation among consumers is **FCFS by upstream position along the belt direction** — matches real Factorio. Simulator still rate-based on a DAG (belts are nodes too), no ticks needed. |
+| Design principle | **Prefer real Factorio mechanics wherever we have a choice.** Simplifications are called out explicitly in the writeup with reasons. |
+| Fuel + resources | Stone furnaces consume **coal** as fuel. Map has patches of iron_ore, copper_ore, **stone**, and **coal**. Miners for each patch type. Furnaces need a coal supply belt in addition to their ore supply belt. |
+| Inserters | **Inserters are first-class entities** placed on the grid. An inserter takes 1 cell, has a rotation, and moves items between an adjacent machine and an adjacent belt tile (or between two adjacent belts). Basic inserter throughput = 0.83 items/sec. No "adjacency = access" magic — every belt-to-machine transfer requires an inserter. |
+| Construction costs | Machine costs come from factoriolab's real Factorio recipes (e.g., assembler = 3 iron_gear + 5 iron_plate + 9 electronic_circuit), not simplified flat iron_plate costs. Read via import script. |
+| Electricity | **Skipped.** Documented as a simplification. All machines are assumed powered. Rationale: electricity is an orthogonal subsystem that multiplies schema complexity (~5 new entity types) without adding much to green-science optimization strategy. FLE-based validation will need to insert a power grid manually at translation time. |
+| Task 2 machine sizes | Real Factorio sizes (miner 3x3, furnace 2x2, assembler 3x3, belt/inserter 1x1) on a 16x16 grid (bump to 20x20 if too tight) |
+| Task 2 starting layouts | Mix of empty grids with budget + random partial builds |
+| Task 3 training | TRL `GRPOTrainer` + LoRA directly on the baseline |
+| Task 3 supervision | Outcome supervision (one reward per completion, computed from the final layout after all edits are applied) |
+| Task 3 reward-model updates | Skipped. Our reward is a deterministic simulator, so the paper's iterative reward-model retraining step is not applicable; documented in writeup. |
+| Baseline model | `Qwen2.5-Coder-1.5B-Instruct` |
+| Reward formula | `R = green_science_rate − α · materials_used − β · total_cells_occupied − γ · machine_count` (small weights so main term dominates; α, β, γ tuned after baseline eval) |
+| Deliverables | Python package (core logic) + Jupyter notebooks (demos, evals, plots) + markdown writeup (concise, clear, complete) |
+| Data source policy | All Factorio numeric values (rates, times, costs, sizes) are pulled from factoriolab GitHub JSON via a generator script. Nothing is written from memory. Memory is only used post-hoc as a sanity check on the pipeline output. |
+
+---
+
+## Task 1 — Exact Policy Improvement Demo
+
+### Files
+- `task1_gridworld/environment.py`
+- `task1_gridworld/policy_iteration.py`
+- `task1_gridworld/random_envs.py`
+- `task1_gridworld/tests.py`
+- `notebooks/task1_policy_iteration.ipynb`
+
+### Theory reference — Sutton & Barto (2nd ed., §4.2–4.3)
+
+**Equations we implement directly:**
+
+- (4.6) Action value under policy π:
+  `q_π(s, a) = Σ_{s',r} p(s',r | s, a) [ r + γ · v_π(s') ]`
+
+- (4.7) Policy improvement condition:
+  `q_π(s, π'(s)) ≥ v_π(s) for all s ∈ S`
+
+- (4.8) Policy improvement theorem — consequence of (4.7):
+  `v_π'(s) ≥ v_π(s) for all s ∈ S`
+  (Strict at any state if (4.7) is strict at that state.)
+
+- (4.9) Greedy improvement:
+  `π'(s) = argmax_a Σ_{s',r} p(s',r | s, a) [ r + γ · v_π(s') ]`
+
+**Stochastic policy extension (from §4.2, final paragraphs):** the theorem carries through for stochastic π. When several actions achieve the argmax in (4.9), any apportionment of probability across those maximizing actions is allowed, provided submaximal actions receive zero probability. Our greedy step uses uniform apportionment across tied maximizers (one specific choice permitted by this extension). Initial policies may still be stochastic (uniform random over actions).
+
+**Policy Iteration algorithm — reproduced verbatim from p. 80:**
+
+```
+1. Initialization
+   V(s) ∈ ℝ and π(s) ∈ A(s) arbitrarily for all s ∈ S
+
+2. Policy Evaluation
+   Loop:
+     Δ ← 0
+     For each s ∈ S:
+       v ← V(s)
+       V(s) ← Σ_{s',r} p(s',r | s, π(s)) [ r + γ · V(s') ]
+       Δ ← max(Δ, |v − V(s)|)
+   until Δ < θ
+
+3. Policy Improvement
+   policy-stable ← true
+   For each s ∈ S:
+     old-action ← π(s)
+     π(s) ← argmax_a Σ_{s',r} p(s',r | s, a) [ r + γ · V(s') ]
+     If old-action ≠ π(s), then policy-stable ← false
+   If policy-stable, stop and return V ≈ v_* and π ≈ π_*; else go to 2.
+```
+
+**Exercise 4.4 caveat (must be handled):** the algorithm above can loop forever if the policy oscillates between equally good actions. Our fix: define stability by max value change `max_s |V_new(s) − V_old(s)| < θ` OR only switch π(s) when the new action's Q-value strictly exceeds the old action's Q-value by a tolerance. The plan uses the value-change criterion as primary and the strict-improvement criterion as secondary safety.
+
+**Implementation mapping:**
+- `evaluate_policy` implements step 2. In addition to the iterative form above, we provide the closed-form `V = (I − γP_π)^{-1} R_π` for finite MDPs (mathematically equivalent, faster for our sizes ≤ 20×20). Both are cross-checked in tests.
+- `improve_policy` implements step 3 (Eq 4.9): greedy argmax with uniform apportionment across tied maximizers. This is faithful to Eq 4.9 exactly (with the §4.2 stochastic extension for ties). No ε-greedy variant.
+- `policy_iteration` alternates 2→3 with the Exercise 4.4 fix.
+
+Verification tests assert Eq (4.8) empirically (`V_new(s) ≥ V_old(s)` for every state at every iteration) across 100 random envs, which is a direct check of the policy improvement theorem.
+
+### Environment
+- Class `GridWorld(rows, cols, start, goal, traps, walls=None, slip_prob=0.0, trap_penalty=-5, step_reward=-1, goal_reward=0, gamma=0.9)`.
+- 4 actions (up/down/left/right). Goal is absorbing terminal.
+- Trap: stepping onto a trap yields `trap_penalty` reward AND forces the next action to be a "no-op" (implemented by expanding state space to `(cell, stunned_flag)` when traps are present, so the MDP stays Markov).
+- Slip: with probability `slip_prob`, executed action replaced by uniform-random action.
+- Precomputes transition tensor `P[s, a, s']` and reward tensor `R[s, a]` as NumPy arrays. Grid-size agnostic; supports rectangles up to 20x20.
+
+### Policy iteration
+- Policy `π[s, a]` as probability matrix (supports fully stochastic policies).
+- `evaluate_policy(pi, env)` — solve `(I − γ P_π) V = R_π` via `numpy.linalg.solve`. Also fallback iterative version to cross-check.
+- `improve_policy(V, env)` — greedy Eq 4.9 with uniform apportionment across tied maximizing actions. Result is a stochastic policy `π[s,a]` that is deterministic when there is a unique argmax and uniform over ties otherwise. No ε-greedy.
+- `policy_iteration(env, initial_pi, max_iters=100, tol=1e-8)` — returns `(V, pi, history)`. Terminates on value-change stability (Ex 4.4 fix).
+
+### Notebook demonstrations
+1. **Showcase**: hand-designed 6x6 grid with 2 traps + 1 wall. Start from uniform random stochastic policy. Show V table + arrow visualization before and after each iteration.
+2. **Robustness**: 100 randomly generated envs across sizes {5x5, 10x10, 15x15, 20x20}. Assert `V_new ≥ V_old` element-wise for every state in every iteration of every run (the Sutton-Barto policy improvement theorem in action).
+3. **Stochastic transitions**: repeat robustness with `slip_prob=0.1`. Confirm theorem still holds.
+4. **Convergence plot**: iterations-to-stability vs grid size.
+
+---
+
+## Task 2 — Mini-Factorio Environment and Harness
+
+### Files
+- `mini_factorio/layout.py` — `Layout` dataclass, JSON serialization
+- `mini_factorio/recipes.py` — real Factorio recipe database
+- `mini_factorio/entities.py` — machine specs (footprint, cost, recipe options)
+- `mini_factorio/belt_router.py` — A* belt path routing
+- `mini_factorio/simulator.py` — rate-based throughput solver on DAG
+- `mini_factorio/reward.py` — reward formula with tunable weights
+- `mini_factorio/random_layouts.py` — random layout generator (empty + partial)
+- `mini_factorio/tests.py` — unit tests against handcrafted layouts
+- `harness/prompt_builder.py` — layout → prompt with schema and rules
+- `harness/edit_schema.py` — pydantic models for edit types
+- `harness/edit_parser.py` — parse LLM output → typed edits
+- `harness/edit_applier.py` — apply edits, return `(new_layout, validation_errors)`
+- `harness/evaluator.py` — end-to-end `policy(prompt) → reward + metrics`
+- `translator/to_fle.py` — Mini-Factorio JSON → Factorio blueprint format (built later, once FLE is inspected)
+- `notebooks/task2_baseline_eval.ipynb` — evaluate baseline, show it is not optimal
+
+### Layout JSON schema
+```json
+{
+  "grid_size": [16, 16],
+  "resources": [
+    {"type": "iron_ore",   "x": 0,  "y": 2,  "size": 3},
+    {"type": "copper_ore", "x": 0,  "y": 7,  "size": 3},
+    {"type": "stone",      "x": 0,  "y": 11, "size": 2},
+    {"type": "coal",       "x": 0,  "y": 13, "size": 3}
+  ],
+  "budget": {"iron_plate": 200, "copper_plate": 50, "stone": 30, "iron_gear": 20, "electronic_circuit": 30},
+  "entities": [
+    {"id": "m1", "type": "electric_mining_drill", "x": 3,  "y": 2, "direction": "east", "target_resource": "iron_ore"},
+    {"id": "m2", "type": "electric_mining_drill", "x": 3,  "y": 13, "direction": "east", "target_resource": "coal"},
+    {"id": "f1", "type": "stone_furnace",         "x": 8,  "y": 2, "recipe": "iron-plate"},
+    {"id": "a1", "type": "assembling_machine_1",  "x": 12, "y": 2, "recipe": "iron-gear-wheel"},
+    {"id": "i1", "type": "inserter",              "x": 7,  "y": 2, "direction": "east"},
+    {"id": "i2", "type": "inserter",              "x": 11, "y": 2, "direction": "east"},
+    {"id": "i3", "type": "inserter",              "x": 7,  "y": 3, "direction": "north"}
+  ],
+  "belts": [
+    {"id": "b_ore",  "item": "iron_ore",    "tiles": [[5,2,"east"],[6,2,"east"]]},
+    {"id": "b_plate","item": "iron_plate",  "tiles": [[9,2,"east"],[10,2,"east"]]},
+    {"id": "b_coal", "item": "coal",        "tiles": [[5,13,"north"],[5,12,"north"],[5,11,"north"],[5,10,"north"],[5,9,"north"],[5,8,"north"],[5,7,"north"],[5,6,"north"],[5,5,"north"],[5,4,"north"],[5,3,"north"]]}
+  ]
+}
+```
+
+Placement uses top-left anchor + orientation. Bounds and footprint collision validated on every add. Belts are directed lines: each tile has `(x, y, direction)`. Consecutive tiles must be adjacent in the direction of the previous tile.
+
+Inserters are 1x1 entities with a rotation. An inserter picks items from the entity in its "input" direction and drops them at the entity in its "output" direction. Example above: `i1` sits between miner `m1` and belt `b_ore`, moving iron_ore from miner onto belt. `i3` sits between belt `b_coal` and furnace `f1`, feeding coal fuel to the furnace. Machines connect to belts **only via inserters** — no automatic adjacency-based flow.
+
+Furnaces require BOTH an ore input AND a coal (fuel) input inserter to operate. Miners require no fuel (electric mining drill assumption; electricity itself is skipped as a subsystem).
+
+### Data sources for Factorio rules and recipes
+
+**Primary and only authoring source: factoriolab's GitHub JSON data** (https://github.com/factoriolab/factoriolab, MIT licensed). This is the same data underlying the leading open-source Factorio calculator (factoriolab.dev). Actively maintained.
+
+No number in `recipes.py` is written from memory or manual transcription. Every value comes from the factoriolab JSON via the import script.
+
+Pipeline:
+1. Download the pinned `data.json` (from `src/data/1.1/` or the equivalent path for the version we target) into `mini_factorio/data/factoriolab_data.json`. Commit the file so results are reproducible.
+2. `mini_factorio/import_recipes.py` — reads the JSON, filters to the green-science chain (~10 recipes, ~5 machines), and emits `mini_factorio/recipes.py` in our internal format.
+3. `recipes.py` is generated (not hand-edited) and carries a header comment noting the factoriolab commit hash / version it was derived from.
+
+Sanity check (not authoring): after importing, compare the generated `recipes.py` values against my memory of Factorio 1.1 and against factoriolab.dev's calculator. Any mismatch triggers investigation (usually a version mismatch or a filter bug) — but the fix is to correct the import script or pin a different data version, never to hand-edit `recipes.py`.
+
+Cross-verification of derived logic: run our simulator on hand-checked ratio scenarios (e.g., "N miners : M furnaces : K assemblers per green science") and compare rates against factoriolab.dev's calculator. If numbers agree, our simulator is trustworthy.
+
+Ground truth (later, once FLE is integrated): FLE embeds the game's internal data. Any discrepancy between our factoriolab-derived values and FLE's is logged in the writeup, and FLE wins.
+
+Fallback: if factoriolab data has schema issues or version confusion we can't resolve, fall back to a small, auditable extraction from the wiki (https://wiki.factorio.com/) — still generated by a script, still no memorized values.
+
+### Recipe subset (green-science chain)
+
+All numeric values (crafting times, input/output amounts, machine crafting speeds, machine sizes, machine construction costs) come from the factoriolab JSON via the import script — not from this plan and not from memory.
+
+Recipes filtered from factoriolab data:
+- `iron-plate` (in stone furnace, consumes coal as fuel)
+- `copper-plate` (in stone furnace, consumes coal as fuel)
+- `iron-gear-wheel` (in assembler)
+- `copper-cable` (in assembler)
+- `electronic-circuit` (in assembler)
+- `transport-belt` (in assembler)
+- `inserter` (in assembler)
+- `logistic-science-pack` (in assembler) — this is "green science"
+
+Entities filtered from factoriolab data:
+- `electric-mining-drill` — mines iron_ore, copper_ore, stone, or coal (target resource specified at placement)
+- `stone-furnace` — smelts, consumes coal as fuel input
+- `assembling-machine-1`
+- `transport-belt` (as an entity, for belt tiles)
+- `inserter` (as an entity, moves items between adjacent machines and belts)
+
+Construction costs (per real Factorio) — pulled from factoriolab, no hand values:
+- `electric-mining-drill` recipe → materials to build
+- `stone-furnace` recipe → materials to build (5 stone in vanilla)
+- `assembling-machine-1` recipe → materials (gears + iron plates + circuits)
+- `transport-belt` recipe → per belt tile
+- `inserter` recipe → per inserter
+
+The import script emits a `recipes.py` and `entities.py` with these + their exact rates and construction costs. This plan intentionally does not restate the numbers to avoid a second source of truth.
+
+**Electricity**: skipped as a subsystem. Miners and assemblers are treated as always-powered. Stone furnaces still require coal fuel input because that's a per-machine input flow, not a network-level system. Documented in the writeup under "Simplifications."
+
+### Simulator
+
+Belts are first-class entities placed on the grid by the model. A belt is a directed line of connected tiles carrying one item type. Machines placed adjacent to a belt can either dump onto it (producer) or pull from it (consumer). Multiple machines can share the same belt (the real-Factorio "bus" pattern).
+
+Pipeline:
+1. Validate layout: machine footprints, belt tiles, and inserters are in bounds and non-overlapping. Belt tiles form contiguous lines with consistent direction. Every furnace has at least one inserter attached to a coal belt (fuel path required).
+2. Build the flow graph:
+   - Nodes = machines AND belts AND inserters.
+   - For each inserter: infer its "source" and "sink" from its rotation. Source can be a machine (output side) or a belt tile (any position on the line). Sink similarly. Edges: `source → inserter → sink`, typed by the item flowing.
+   - No machine-to-belt or belt-to-machine flow exists without an inserter.
+3. Verify the graph is a DAG. Reject cyclic layouts.
+4. Topological sort over the combined machine+belt+inserter nodes.
+5. Per-node propagation in topological order:
+   - **Machine node** (miner / furnace / assembler): `output_rate = min(nominal_rate, min over required inputs of (supplied_rate / required_per_output) × nominal_rate)`. Furnaces require BOTH ore and coal supply — if either is missing, output = 0.
+   - **Inserter node**: `throughput = min(inserter_max_rate, source.available_at_attachment)`. Basic inserter max rate = 0.83 items/sec (from factoriolab).
+   - **Belt node**: total supply = sum of inserter throughputs feeding onto the belt. Cap at belt capacity (yellow belt = 15 items/sec from factoriolab). If total supply exceeds capacity, throttle producer inserters proportionally by upstream position (upstream inserters succeed first).
+   - **Belt → consumer inserters (FCFS by position)**: sort consumer inserters by attachment position along the belt direction (upstream first). Iterate in order, giving each `min(consumer.demand_at_this_inserter, remaining_flow)`. Downstream consumers starve if upstream ones consume all available. Matches real-Factorio inserter behavior on a shared belt.
+6. Green science reward = sum of output rates of all `green_science` (logistic-science-pack) assemblers.
+7. Compute `materials_used` (using real factoriolab construction recipes), `total_cells_occupied` (machines + belt tiles + inserters), `machine_count` (all placed entities including inserters).
+
+**Why this is still rate-based, not tick-based:** for a DAG topology the steady-state flow through each belt is fully determined by supply, capacity, and FCFS allocation — no simulation of item movement in time is needed. Cycles (which would require iterative fixpoint solving) are forbidden by validation.
+
+### Reward
+```python
+def reward(layout):
+    gs_rate = simulate(layout)
+    return (
+        gs_rate
+        - alpha * layout.materials_used()
+        - beta  * layout.total_cells_occupied()
+        - gamma * layout.machine_count()
+    )
+```
+Initial weights: `alpha=0.001`, `beta=0.01`, `gamma=0.05`.
+
+**Tuning discipline (important):** Reward weights are tuned **only on the training split** (60 layouts). The validation split (20 layouts) is never touched during weight selection. This prevents overfitting reward-shape choices to the val set, which would bias the reported final metrics. Concretely: run baseline evaluations on training layouts only, adjust weights so the main term (green science rate) dominates and secondary terms act as tie-breakers, then freeze weights before touching val.
+
+### Edit schema
+
+- `add_entity {type, x, y, direction, recipe?, target_resource?}` — for machines. `target_resource` is required for miners (which patch to mine). `recipe` is required for furnaces and assemblers.
+- `remove_entity {id}` — removes a machine or inserter.
+- `add_belt {id, item, tiles: [[x1,y1,dir1], [x2,y2,dir2], ...]}` — places a belt as a directed contiguous line of tiles carrying one item type. Validator checks tiles are in bounds, non-overlapping with existing entities, form a contiguous chain, and direction is consistent between adjacent tiles.
+- `remove_belt {id}` — removes an entire belt.
+- `extend_belt {id, tiles: [...]}` — appends tiles at head or tail.
+- `add_inserter {id, x, y, direction}` — places an inserter. Inserter picks items from the entity in its input direction and drops to the entity in its output direction (opposite side).
+
+Item flow between machines and belts happens **only through inserters**. Adjacency alone does not create a flow — a machine must have an inserter placed between it and a belt tile in the correct rotation. This matches real Factorio exactly.
+
+LLM outputs a JSON list of edits. Each edit is validated independently. On failure, that specific edit is rejected with a clear error string; other edits in the list still apply. Layout state after all attempted edits is returned along with the per-edit error report.
+
+### Baseline evaluation notebook
+- Load `Qwen2.5-Coder-1.5B-Instruct` via `transformers`.
+- 20 held-out layouts (mix of empty + partial).
+- Sample K=5 edit sequences per layout. Score each.
+- Compare mean baseline reward vs 3-5 handcrafted "reasonable" layouts to prove baseline is not optimal.
+- Report: mean reward, per-layout distribution, valid-edit rate, invalid-JSON rate.
+
+### FLE integration (**required — the "translates back to reference engine" check Morgan explicitly asked for**)
+
+Morgan's exact ask: *"any approach is fine as long as you're confident you can translate solutions back to the reference game engine and measure validation performance."* This section addresses **both** parts.
+
+**Part A — Translation validity check** (structural correctness):
+- Write `translator/to_fle.py`: our JSON → Factorio blueprint format. Machine sizes are real, so most of the translation is 1-to-1. Manual step: insert a minimal power grid at translation time (we skipped electricity in the sim).
+- For every top-K layout: assert the translated blueprint **builds without error** in FLE — every entity valid, no collisions, no unreachable machines, no ambiguous belt directions. Failure of any layout to build = simulator produced a layout that isn't a real Factorio layout, which is a bug we must fix.
+- Report: fraction of top-K layouts that build successfully. Target 100%. Any failure gets diagnosed.
+
+**Part B — Performance agreement check** (numeric correctness). Two metrics because they answer different questions:
+- **Pearson correlation** — does our simulator RANK layouts the same way FLE does? Ranking is what matters for GRPO's reward signal being meaningful. If our sim thinks A > B and FLE agrees, training works even if absolute numbers drift.
+- **MAPE (mean absolute percentage error)** — are our absolute rate numbers close to reality? This is what backs claims in the writeup like "policy_final produces 12/s". A perfect Pearson with a 30% consistent overestimate is fine for training but misleading in the report.
+
+Concretely:
+- For every successfully built layout: run it in FLE for a fixed simulated period (e.g., 10 game-minutes) and record real green-science production per second.
+- Compute Pearson r and MAPE across the top-K layouts.
+- **Ship gates**: `Pearson r ≥ 0.9` AND `MAPE ≤ 20%`.
+- Below either gate, investigate simulator discrepancy (usually: a rule we simplified is materially affecting production — e.g., inserter throughput approximation, belt capacity, fuel starvation) and either fix the sim or document the specific gap in the writeup.
+
+**Scope**: top-K ≈ 10 layouts each from `policy_0` and `policy_final` (20 total). Small enough to run in <30 min of FLE time, large enough for a meaningful correlation.
+
+**Writeup section 7** reports both:
+- Table 1: per-layout `builds_ok / our_sim_rate / FLE_rate / abs_error`
+- Aggregate: build success rate, Pearson r, MAE, plot of our_sim_rate vs FLE_rate (scatter with y=x line)
+
+This closes the loop on Morgan's explicit requirement: our layouts translate back to the reference engine (Part A), and our validation performance is measurable and correct (Part B).
+
+---
+
+## Task 3 — GRPO Iterative Improvement
+
+### Files
+- `training/data.py` — dataset of prompts (60 train + 20 val layouts)
+- `training/reward_wrapper.py` — TRL-compatible reward function calling our simulator
+- `training/train_grpo.py` — training entry point
+- `training/evaluate.py` — checkpoint evaluation
+- `notebooks/task3_grpo_training.ipynb` — Colab-runnable training + eval + plots
+
+### Theory reference — DeepSeekMath GRPO (arXiv 2402.03300, §4.1)
+
+**Notation.** `q` = prompt (our layout + task description). `o_i` = i-th sampled output (edit sequence). `G` = group size (samples per prompt). `π_θ` = current policy, `π_θ_old` = policy that generated the sample, `π_ref` = reference policy (frozen at the start of each outer iteration). `r_i` = scalar reward for output `o_i` from our simulator. `Â_{i,t}` = advantage for token `t` of output `i`.
+
+**Eq (3) — GRPO objective (the one we maximize):**
+
+```
+J_GRPO(θ) = E[q ~ P(Q), {o_i}_{i=1..G} ~ π_θ_old(O | q)]
+    (1/G) Σ_{i=1..G}  (1/|o_i|) Σ_{t=1..|o_i|} {
+        min(
+            [π_θ(o_{i,t} | q, o_{i,<t}) / π_θ_old(o_{i,t} | q, o_{i,<t})] · Â_{i,t},
+            clip([π_θ(o_{i,t} | q, o_{i,<t}) / π_θ_old(o_{i,t} | q, o_{i,<t})], 1 − ε, 1 + ε) · Â_{i,t}
+        )
+        − β · D_KL(π_θ || π_ref)
+    }
+```
+
+Key differences from PPO (Eq 1 in the paper): (a) baseline comes from group statistics, no value model; (b) KL penalty is added directly to the loss, not to per-token reward.
+
+**Eq (4) — KL divergence unbiased estimator (Schulman 2020):**
+
+```
+D_KL(π_θ || π_ref)  =  [π_ref(o_{i,t} | q, o_{i,<t}) / π_θ(o_{i,t} | q, o_{i,<t})]
+                     − log[π_ref(o_{i,t} | q, o_{i,<t}) / π_θ(o_{i,t} | q, o_{i,<t})]
+                     − 1
+```
+Guaranteed non-negative.
+
+**Outcome supervision advantage (§4.1.2 — our chosen supervision mode):**
+
+```
+Â_{i,t}  =  r̃_i  =  (r_i − mean(r)) / std(r)     for all tokens t of output o_i
+```
+Every token in output `o_i` receives the same normalized advantage. `mean(r)` and `std(r)` are taken over the group of `G` samples for the same prompt `q`.
+
+**Algorithm 1 — Iterative GRPO (with our reward-model-update step skipped):**
+
+```
+Input: initial policy π_θ_init ; deterministic reward function r_φ = our simulator ;
+       task prompts D ; hyperparameters ε, β, μ
+1:  π_θ  ←  π_θ_init
+2:  for iteration = 1..I do
+3:      π_ref  ←  π_θ                     # reference for KL, refreshed each outer iteration
+4:      for step = 1..M do
+5:          Sample a batch D_b from D
+6:          π_θ_old  ←  π_θ               # snapshot for importance ratio
+7:          Sample G outputs {o_i} ~ π_θ_old(· | q) for each q in D_b
+8:          Compute rewards {r_i} for each o_i via r_φ    (our simulator)
+9:          Compute Â_{i,t} via outcome-supervision normalization (formula above)
+10:         for GRPO iteration = 1..μ do
+11:             Update π_θ by maximizing Eq (3)
+12:         # SKIPPED: retrain r_φ via replay — our reward is a deterministic simulator, nothing to update
+Output: π_θ
+```
+
+**Implementation mapping:**
+- `training/train_grpo.py` uses `trl.GRPOTrainer`, which implements Eq (3) and Eq (4) directly.
+- `training/reward_wrapper.py` implements `r_φ` — our simulator wrapped as a TRL-compatible reward function that returns scalar `r_i` per completion (outcome supervision).
+- Advantage normalization (`r̃_i` formula) is handled internally by `GRPOTrainer` when the reward function returns one scalar per completion.
+- Reference policy `π_ref` is snapshotted at the start of each outer iteration (I=3 in our config).
+- Reward-model retraining (line 12) is intentionally omitted; documented in the writeup.
+
+**Hyperparameters — paper values vs our values (with justification):**
+
+| Symbol | Paper | Ours | Reason for difference |
+|---|---|---|---|
+| Base model | DeepSeekMath-Instruct 7B | Qwen2.5-Coder-1.5B-Instruct | Smaller baseline maximises improvement headroom (per Task 2 goal) and fits Colab T4 comfortably. |
+| Fine-tuning | Full parameter | LoRA (rank 16, alpha 32) | LoRA needed for T4 memory footprint. |
+| Learning rate | 1e-6 (full-param) | 5e-5 (LoRA) | LoRA typically uses ~10x higher LR than full-param. May tune down to 1e-5 if training is unstable. |
+| KL coeff β | 0.04 | 0.04 | Same. |
+| Group size G | 64 | 8 | T4 memory / throughput constraint. |
+| μ (inner updates) | 1 | 1 | Same. |
+| Max length | 1024 | 1024 | Same (may reduce if generations are shorter). |
+| Batch size | 1024 | ~16–32 | T4 constraint. |
+| Outer iterations I | not fixed | 3 | Budget-driven; may extend if reward still climbing. |
+| Steps per iteration M | derived from 144K prompts | ~200 | Our dataset is smaller (60 train prompts). |
+| ε (clip) | not specified explicitly (TRL default 0.2) | 0.2 (TRL default) | Standard PPO/GRPO clip. |
+
+### Config (initial)
+- Base: `Qwen2.5-Coder-1.5B-Instruct`
+- LoRA: rank 16, alpha 32, dropout 0.05, target modules = all linear
+- GRPO: group size G=8, KL coeff 0.04, LR 5e-5, cosine schedule
+- Supervision: **outcome supervision** — one reward per completion, all tokens in the completion share the same advantage
+- Reward model updates: **skipped** — reward is our deterministic simulator (nothing to update between iterations)
+- Iterations: 3, ~200 optimizer steps each, ~50 prompts per iter, generation temperature 0.8
+- Save adapter per iteration (`policy_0` = base, `policy_1`, `policy_2`, `policy_3` = policy_final)
+
+Exact GRPO objective and algorithm will be transcribed from the DeepSeekMath paper (arXiv 2402.03300) once the user sends the equations; this section will be updated to reference them directly (e.g., `# Implements Eq. X from DeepSeekMath`).
+
+### Reward wrapper
+```python
+def reward_fn(prompts, completions, **kwargs) -> list[float]:
+    rewards = []
+    for prompt, completion in zip(prompts, completions):
+        layout = layout_from_prompt(prompt)
+        edits, parse_ok = parse_edits(completion)
+        if not parse_ok:
+            rewards.append(-1.0)  # syntax penalty
+            continue
+        new_layout, errs = apply_edits(layout, edits)
+        if errs:
+            rewards.append(-0.5)  # invalid edits penalty
+            continue
+        rewards.append(compute_reward(new_layout))
+    return rewards
+```
+
+### Evaluation
+
+**Val split discipline:** the 20 validation layouts are never used during training, reward-weight tuning, or hyperparameter search. They are touched exactly once, at the end, to produce the final reported metrics. This keeps the reported improvement from being biased by weight-selection or hyperparameter-selection leakage.
+
+- On the 20 val layouts, sample 4 completions per layout from each checkpoint (policy_0 … policy_final).
+- Compute the composite reward (used by GRPO training) and record every raw component **separately**.
+- Verify Task 3 claim: `mean_reward(policy_final) > mean_reward(policy_0)` and `Δ_final > max_i Δ_i` where `Δ_i = mean(policy_{i+1}) − mean(policy_i)`.
+- Plot: composite mean reward vs iteration + std/CI. Bar chart of per-iteration deltas.
+- **Per-checkpoint raw metrics table** (as the user specified — reported both alongside the composite and standalone in the writeup):
+
+| Checkpoint | Green science /s | Materials | Area (cells) | Machines | Valid outputs % | Composite reward |
+|---|---|---|---|---|---|---|
+| policy_0 | ... | ... | ... | ... | ... | ... |
+| policy_1 | ... | ... | ... | ... | ... | ... |
+| policy_final | 12 | 340 | 86 | 18 | 82% | ... |
+
+The composite reward is what GRPO optimizes; the raw columns let the reader see the tradeoffs directly and are the primary evidence in the writeup.
+
+### Colab notebook flow
+1. Clone repo, `pip install` deps (transformers, trl, peft, accelerate, bitsandbytes, our package).
+2. Load model + LoRA config.
+3. Load prompts dataset.
+4. Run GRPO training loop, saving adapters to Drive.
+5. Run evaluation on val split for all checkpoints.
+6. Plot + save results.
+
+---
+
+---
+
+## Writeup — explicit objective and contents
+
+The writeup at `writeup/report.md` is a first-class deliverable, not a byproduct. It must be concise, clear, and cover:
+
+1. **Problem statement**: what the three tasks ask for, in our own words.
+2. **Design choices** and why: every locked decision above (compute, machine sizes, belts, simulator paradigm, reward formula, baseline model, training method, data source), briefly justified.
+3. **Task 1**: the exact Sutton-Barto policy improvement theorem and policy iteration algorithm we implemented, with the equations we used. Results: convergence, tables/plots.
+4. **Task 2**: the Mini-Factorio environment (schema, recipes, simulator, reward), how we validated it, evidence the baseline is not optimal.
+5. **Task 3**: the exact GRPO objective and algorithm we implemented, hyperparameters, training results (reward-vs-iteration plot, per-iteration deltas, multi-metric analysis), validation of the Task 3 claim `Δ_final > max_i Δ_i`.
+6. **Limitations and simplifications**: everything we simplified vs real Factorio, why, and what the impact is. In particular: **electricity subsystem is skipped** (miners and assemblers are treated as always-powered; furnaces still need coal fuel because that's a per-machine input flow); no fluids; no biters; no machine speed modules; no belt tiers beyond yellow (15 items/sec). Note: train and val layouts each have randomly generated resource-patch positions, so we are not restricted to a single fixed map.
+7. **FLE integration results (required section — addresses Morgan's "translates back to reference engine" requirement)**:
+   - **Part A — Translation validity**: fraction of top-K layouts that build successfully in FLE (target 100%). Any build failures diagnosed and fixed.
+   - **Part B — Performance agreement**: per-layout table of `our_sim_rate` vs `FLE_rate`, **Pearson r** (ranking agreement, matters for GRPO), **MAPE** (absolute agreement, matters for numeric claims), scatter plot with y=x reference line. Ship gates: `Pearson r ≥ 0.9` AND `MAPE ≤ 20%`.
+   - Together these show: (i) our layouts are real Factorio layouts, and (ii) our simulator's reward numbers are trustworthy in both ranking and magnitude.
+8. **Sources**: cite Sutton-Barto (edition + page), DeepSeekMath (arXiv id), factoriolab (repo + commit), Factorio Wiki (as secondary), FLE (if used).
+
+Style: short paragraphs, equations in LaTeX/Markdown, tables and plots inline. Target reader is Morgan — technical, wants to see decisions defended, not repeated theory.
+
+---
+
+## Repository structure
+
+```
+ML project/
+├── task1_gridworld/
+│   ├── environment.py
+│   ├── policy_iteration.py
+│   ├── random_envs.py
+│   └── tests.py
+├── mini_factorio/
+│   ├── layout.py
+│   ├── recipes.py
+│   ├── entities.py
+│   ├── belt_router.py
+│   ├── simulator.py
+│   ├── reward.py
+│   ├── random_layouts.py
+│   └── tests.py
+├── harness/
+│   ├── prompt_builder.py
+│   ├── edit_schema.py
+│   ├── edit_parser.py
+│   ├── edit_applier.py
+│   └── evaluator.py
+├── training/
+│   ├── data.py
+│   ├── reward_wrapper.py
+│   ├── train_grpo.py
+│   └── evaluate.py
+├── translator/
+│   └── to_fle.py               # built later
+├── notebooks/
+│   ├── task1_policy_iteration.ipynb
+│   ├── task2_baseline_eval.ipynb
+│   ├── task3_grpo_training.ipynb
+│   └── final_results.ipynb
+├── writeup/
+│   └── report.md
+├── pyproject.toml
+└── README.md
+```
+
+Package manager: `uv` (fast, modern, single-file config).
+
+---
+
+## Verification
+
+- **Task 1 unit tests**: for each of 100 random envs of varying sizes, assert `V_new(s) ≥ V_old(s)` for every state at every policy-iteration step (the Sutton-Barto policy improvement theorem). Assert policy iteration converges within a finite number of steps for every finite env.
+- **Task 2 unit tests**:
+  - Handcrafted layout: 1 miner + 1 furnace + 1 assembler for gears → simulator reports the correct 0.3125 plate/sec and 0.15625 gear/sec (bottlenecked by furnace).
+  - Handcrafted full green-science chain → reports the correct end-to-end rate.
+  - Cyclic layout → rejected as invalid.
+  - Unroutable connection → rejected as invalid.
+  - **Belt allocation tests (FCFS behavior — reward correctness depends on this)**:
+    - **Two producers, one belt, total supply ≤ capacity**: both producers flow fully; belt throughput = sum of supplies.
+    - **Two producers, one belt, total supply > capacity**: upstream producer flows fully; downstream producer is throttled by the leftover capacity; total belt throughput = capacity exactly.
+    - **Two consumers, one belt, supply ≥ total demand**: both consumers get exactly their demand.
+    - **Two consumers, one belt, supply < total demand**: upstream consumer gets its full demand; downstream consumer gets `max(0, supply − upstream_demand)`; sum of pulled = supply.
+    - **Mixed multi-producer + multi-consumer**: end-to-end flow matches hand-computed expected FCFS allocation across a small canned scenario.
+    - **Belt with zero producers**: consumers get 0.
+    - **Belt with zero consumers**: producers throttled to 0 (nowhere for items to go).
+  - Baseline model produces valid JSON edits ≥ 70% of the time on our schema (measured in the baseline eval notebook).
+  - At least one handcrafted layout achieves strictly higher reward than baseline mean (proof baseline is not optimal).
+- **Task 3 pass criteria**:
+  - `mean_reward(policy_final) > mean_reward(policy_0)` on the val split, with the delta at least 3x noise floor (measured via std over samples).
+  - `Δ_final > max_i Δ_i` per the Task 3 claim.
+  - Reward-vs-iteration plot committed to `notebooks/final_results.ipynb`.
+  - Example before/after layouts (best baseline vs best final) visualized in `final_results.ipynb`.
+- **FLE cross-check (required)**: top-K (≈10) layouts from both `policy_0` and `policy_final` translated and run in FLE. Report (a) build success rate (target 100%), (b) Pearson r between our sim rate and FLE rate (ranking agreement), (c) MAPE (absolute agreement). Ship gates: 100% build success, Pearson r ≥ 0.9, MAPE ≤ 20%. Any gate failure = diagnose simulator discrepancy and fix before finalizing.
+
+---
+
+## Open items (defaults set, easily adjusted during execution)
+
+- **Reward weights** (α=0.001, β=0.01, γ=0.05): tuned **on the training split only**, never on val. Val is untouched until final reporting.
+- **Mini-Factorio grid size** (16x16 default): bump to 20x20 if real machine sizes make green-science chain infeasible.
+- **Training layouts count** (60 train + 20 val): may increase/decrease based on training speed on Colab.
+- **GRPO group size** (G=8): may drop to 4 if VRAM tight on T4.
+- **Number of training iterations** (3): may add a 4th if time allows and improvement is still climbing.
+
