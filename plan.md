@@ -624,6 +624,33 @@ Without this fix any rate measurement on a CPU-limited container reads ~4× low.
 
 ---
 
+## Hybrid sim/FLE strategy (2026-08-08)
+
+Confirmed after cross-check results: use **analytical sim as primary reward**
+for GRPO training (fast, deterministic — critical for iteration count) and
+**FLE for periodic spot-checks + final evaluation**.
+
+Concrete protocol:
+- Training: every reward call goes through `mini_factorio.simulator.simulate`.
+- Spot-check: every ~50 GRPO iterations, take 5 random rollouts, run in FLE,
+  compare rates. Log divergence. If Pearson r on the spot-check batch drops
+  below ~0.7, pause training and investigate sim gap.
+- Final report table: both `sim_rate` and `fle_rate` columns for policy_0 and
+  policy_final rollouts. Rank correlation on top-K is the headline number
+  proving improvement is real, not a sim exploit.
+
+### Known sim limitation — `belt_asm_chain` (32% MAPE)
+
+Cross-check batch has 3/4 layouts under 1% error; `belt_asm_chain` at 32%.
+Root cause: our sim uses single-lane FCFS on belts. Real Factorio has two
+lanes plus inserter swing-timing effects that cause a ~2:1 upstream:downstream
+split when two consumers share a belt with sparse supply. Fixing this properly
+requires a tick-based sim (architectural rewrite). Documented as accepted
+limitation; hybrid strategy above catches any training-time exploitation of
+the gap via FLE spot-checks.
+
+---
+
 ## Open items (defaults set, easily adjusted during execution)
 
 - **Reward weights** (α=0.001, β=0.01, γ=0.05): tuned **on the training split only**, never on val. Val is untouched until final reporting.

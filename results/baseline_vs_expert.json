@@ -1,0 +1,63 @@
+{
+  "baseline": {
+    "n_episodes": 100,
+    "mean_reward": -0.4075,
+    "mean_green_science": 0.0,
+    "invalid_json_rate": 0.27,
+    "valid_edit_rate": 0.21052631578947367
+  },
+  "handcrafted": [
+    {
+      "name": "iron_plate_smoke",
+      "composite_reward": -0.776,
+      "green_science_rate": 0,
+      "sim_green_science_rate": 0,
+      "materials": 66.0,
+      "cells": 41,
+      "machine_count": 6
+    },
+    {
+      "name": "iron_gear_with_extractor",
+      "composite_reward": -1.048,
+      "green_science_rate": 0,
+      "sim_green_science_rate": 0,
+      "materials": 88.0,
+      "cells": 51,
+      "machine_count": 9
+    },
+    {
+      "name": "belt_asm_chain",
+      "composite_reward": -1.482,
+      "green_science_rate": 0,
+      "sim_green_science_rate": 0,
+      "materials": 122.0,
+      "cells": 71,
+      "machine_count": 13
+    }
+  ],
+  "expert_blueprints": [
+    {
+      "name": "Green Science no belt",
+      "fle_rate": 0.33
+    },
+    {
+      "name": "Green Science with Belt",
+      "fle_rate": 1.0
+    },
+    {
+      "name": "Green Science Element (largest)",
+      "fle_rate": 6.04
+    },
+    {
+      "name": "Green Science (mid)",
+      "fle_rate": 0.25
+    },
+    {
+      "name": "unlabeled (line 15)",
+      "fle_rate": 0.25
+    }
+  ],
+  "best_expert_green_science_rate": 6.04,
+  "gap_expert_minus_baseline_gs": 6.04,
+  "baseline_is_not_optimal": true
+}
