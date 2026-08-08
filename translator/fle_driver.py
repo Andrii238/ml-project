@@ -34,7 +34,8 @@ from .to_fle import layout_to_lua_commands, read_production_count_lua, set_game_
 DEFAULT_ADDRESS = "localhost"
 DEFAULT_RCON_PORT = 27000        # FLE's START_RCON_PORT
 DEFAULT_RCON_PASSWORD = "factorio"  # FLE's RCON_PASSWORD
-DEFAULT_MEASUREMENT_SECONDS = 60.0
+DEFAULT_MEASUREMENT_SECONDS = 120.0
+DEFAULT_WARMUP_SECONDS = 60.0    # skip this much game-time before starting the rate window
 DEFAULT_GAME_SPEED = 100         # so 60 in-game seconds runs in 0.6 wall-time seconds
 
 
@@ -168,7 +169,9 @@ def validate_and_measure(
     *,
     layout_id: str = "unnamed",
     sim_rate: float | None = None,
+    target_item: str = GREEN_SCIENCE_ITEM,
     measurement_seconds: float = DEFAULT_MEASUREMENT_SECONDS,
+    warmup_seconds: float = DEFAULT_WARMUP_SECONDS,
     game_speed: int = DEFAULT_GAME_SPEED,
     address: str = DEFAULT_ADDRESS,
     tcp_port: int = DEFAULT_RCON_PORT,
@@ -215,13 +218,36 @@ def validate_and_measure(
     if not result.build_ok:
         return result
 
-    # Measure: hop game speed, sample count + tick, sleep, sample again, use
-    # the actual tick delta (÷ 60) as the game-time denominator. Container may
-    # be CPU-limited below the requested game.speed (empirically ~22× on Apple
-    # Silicon Docker at game.speed=100), so relying on wall time × requested
-    # speed under-reports rates ~4× — plan.md §FLE cross-check.
-    read_cmd = read_production_count_lua(GREEN_SCIENCE_ITEM)
+    # Measure with a warmup phase to eliminate transients (furnace/belt fill,
+    # assembler output buffer fill). The rate window starts AFTER warmup.
+    # Container CPU-limits game speed on Apple Silicon (~22× at game.speed=100),
+    # so we use game.tick deltas — not wall time — to compute the rate.
+    read_cmd = read_production_count_lua(target_item)
     _sc(client, set_game_speed_lua(game_speed))
+
+    def _wait_ticks(target_delta_seconds: float) -> None:
+        """Sleep until at least `target_delta_seconds` game-seconds have elapsed
+        since the current game.tick. Cap wall time so we don't hang forever."""
+        try:
+            t0 = int(_sc(client, "rcon.print(game.tick)").strip())
+        except (AttributeError, ValueError):
+            return
+        target = t0 + int(target_delta_seconds * 60)
+        wall_deadline = time.time() + target_delta_seconds * 2.0 + 5.0
+        while time.time() < wall_deadline:
+            time.sleep(0.1)
+            try:
+                cur = int(_sc(client, "rcon.print(game.tick)").strip())
+            except (AttributeError, ValueError):
+                continue
+            if cur >= target:
+                return
+
+    # Phase 1: warmup. Let the layout reach steady state.
+    if warmup_seconds > 0:
+        _wait_ticks(warmup_seconds)
+
+    # Phase 2: measurement window. Snapshot count+tick, wait, snapshot again.
     try:
         tick_before = int(_sc(client, "rcon.print(game.tick)").strip())
         before = float(_sc(client, read_cmd).strip())
@@ -229,18 +255,7 @@ def validate_and_measure(
         result.build_ok = False
         result.build_errors.append(f"pre-count read: {e}")
         return result
-    # Poll until at least measurement_seconds of GAME time have elapsed.
-    target_ticks = tick_before + int(measurement_seconds * 60)
-    # Bound wall time to avoid pathological hangs (measurement_seconds / 1 speed = worst case).
-    wall_deadline = time.time() + measurement_seconds * 2.0
-    while time.time() < wall_deadline:
-        time.sleep(0.1)
-        try:
-            cur_tick = int(_sc(client, "rcon.print(game.tick)").strip())
-        except (AttributeError, ValueError):
-            continue
-        if cur_tick >= target_ticks:
-            break
+    _wait_ticks(measurement_seconds)
     try:
         tick_after = int(_sc(client, "rcon.print(game.tick)").strip())
         after = float(_sc(client, read_cmd).strip())

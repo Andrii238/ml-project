@@ -35,6 +35,16 @@ from .layout import (
     Machine,
     _machine_kind,
 )
+
+
+def _inserter_throughput(insr: Inserter) -> float:
+    """items/sec swing rate for this inserter's tier."""
+    return INSERTER_THROUGHPUT[insr.type]
+
+
+def _belt_speed(belt: Belt) -> float:
+    """items/sec cap for one belt (min across all tiles = tier speed)."""
+    return BELT_SPEED[belt.type]
 from .recipes import GREEN_SCIENCE_ITEM, RECIPES
 
 FUEL_ITEM = "coal"
@@ -222,7 +232,15 @@ def resolve_inserters(layout: Layout) -> tuple[list[InserterConn], list[str]]:
 # ------------------------- Fixpoint solver -------------------------
 
 
-def simulate(layout: Layout) -> SimResult:
+def simulate(layout: Layout, *, implicit_sinks: set[str] | None = None) -> SimResult:
+    """Compute steady-state rates for the layout.
+
+    `implicit_sinks`: set of item names treated as having an infinite consumer
+    (like green-science-pack's implicit lab). Use for testing individual chain
+    segments without needing a full green-science layout to avoid dead-end
+    back-pressure. Default: only GREEN_SCIENCE_ITEM.
+    """
+    sink_items: set[str] = {GREEN_SCIENCE_ITEM} | (implicit_sinks or set())
     errs = layout.validate_layout()
     if errs:
         return SimResult(0.0, {}, {}, {}, errs)
@@ -287,14 +305,12 @@ def simulate(layout: Layout) -> SimResult:
     inserter_rate = {c.id: 0.0 for c in conns}
     belt_flow = {b.id: 0.0 for b in layout.belts}
 
-    def _demand_of_inserter(insr_id: str) -> float:
-        """How much this inserter WANTS to move, capped at INSERTER_THROUGHPUT.
+    inserters_by_id = {i.id: i for i in layout.inserters}
 
-        For an inserter delivering to a machine: min(INSERTER_THROUGHPUT, machine's
-        per-inserter share of nominal input demand for that item).
-        For one delivering onto a belt: min(INSERTER_THROUGHPUT, ∞) = INSERTER_THROUGHPUT.
-        """
+    def _demand_of_inserter(insr_id: str) -> float:
+        """How much this inserter WANTS to move, capped at its tier throughput."""
         c = conns_by_id[insr_id]
+        tp = _inserter_throughput(inserters_by_id[insr_id])
         if c.sink_kind == "machine":
             m = machines_by_id[c.sink_id]
             nominal = machine_nominal[m.id]
@@ -304,31 +320,26 @@ def simulate(layout: Layout) -> SimResult:
                 inputs = _machine_input_items(m)
                 if c.item not in inputs:
                     return 0.0
-                # required_rate = ingredient_amount × nominal_output / output_amount
                 r = RECIPES[m.recipe]
                 out_amt = next(iter(r.products.values()))
                 required_total = inputs[c.item] * nominal / out_amt
-            # If multiple inserters deliver the same item to this machine, share equally.
             siblings = inserters_to_machine_by_item.get(m.id, {}).get(c.item, [])
             share = required_total / max(1, len(siblings))
-            return min(INSERTER_THROUGHPUT, share)
-        # Sink is belt: bounded only by inserter throughput.
-        return INSERTER_THROUGHPUT
+            return min(tp, share)
+        return tp
 
     def _supply_available_to_inserter(insr_id: str) -> float:
         """How much this inserter CAN pick up from its source, given source state."""
         c = conns_by_id[insr_id]
+        tp = _inserter_throughput(inserters_by_id[insr_id])
         if c.source_kind == "machine":
             m = machines_by_id[c.source_id]
             out = machine_rate[m.id]
-            # Split machine output equally among consumer inserters.
             siblings = inserters_from_machine.get(m.id, [])
             share = out / max(1, len(siblings))
-            return min(INSERTER_THROUGHPUT, share)
+            return min(tp, share)
         if c.source_kind == "belt":
-            # Consumer inserter on a belt: handled in belt allocation pass.
-            # Return upper bound; belt pass will further throttle.
-            return INSERTER_THROUGHPUT
+            return tp
         return 0.0
 
     for _ in range(MAX_ITER):
@@ -365,7 +376,11 @@ def simulate(layout: Layout) -> SimResult:
             cons_sorted = sorted(cons, key=lambda cid: conns_by_id[cid].source_pos or 0)
             consumer_demands = [_demand_of_inserter(cid) for cid in cons_sorted]
 
-            total = min(sum(e[3] for e in prod_entries), sum(consumer_demands), BELT_SPEED)
+            # No-consumer belts are treated as feeding an implicit chest sink.
+            # This mirrors to_fle.py, which auto-places an inserter+steel-chest
+            # at each dead-end belt tip in the FLE build so sim and FLE agree.
+            consumer_cap = sum(consumer_demands) if cons_sorted else _belt_speed(b)
+            total = min(sum(e[3] for e in prod_entries), consumer_cap, _belt_speed(b))
             belt_flow[b.id] = total
 
             # FCFS distribution to producers (update inserter rates only;
@@ -413,16 +428,23 @@ def simulate(layout: Layout) -> SimResult:
                 if required_coal > 0:
                     ratios.append(min(1.0, supply.get(FUEL_ITEM, 0.0) / required_coal))
             actual = nominal * (min(ratios) if ratios else 1.0)
-            # Output-consumer rule: if no inserter picks from this machine, the
-            # output slot fills and the machine stops. Matches real Factorio's
-            # finite output-buffer behavior. Applies to furnaces + assemblers;
-            # miners are handled separately via drop_position belt.
-            # EXCEPTION: an assembler producing the reward item (green science
-            # pack) is treated as having an implicit sink (research labs). This
-            # matches plan.md's reward definition — otherwise no layout could
-            # ever score positive without a lab entity in the schema.
-            if not inserters_from_machine.get(m.id) and m.recipe != GREEN_SCIENCE_ITEM:
-                actual = 0.0
+            # Output-extraction rule: a machine's steady-state rate is bounded
+            # by the rate at which output actually leaves the machine. Real
+            # Factorio: if extract inserters can't deliver (belt full, no
+            # consumer), the output slot fills and the machine stops.
+            # We enforce this by capping actual at total inserter-extraction rate.
+            # (Inserter rates were already updated by Pass B above, which
+            # accounts for belt FCFS and consumer demand.)
+            # EXCEPTION: machines producing items in `sink_items` (default:
+            # only green-science pack, which has an implicit research-lab sink)
+            # never back-pressure. Extra sinks can be added via the
+            # `implicit_sinks` param for unit tests that exercise the sim on
+            # isolated chain segments.
+            output_item = _machine_output_item(m)
+            if output_item not in sink_items:
+                extractors = inserters_from_machine.get(m.id, [])
+                total_extraction = sum(inserter_rate[i] for i in extractors)
+                actual = min(actual, total_extraction)
             machine_rate[m.id] = actual
 
         # Convergence check

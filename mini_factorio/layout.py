@@ -42,7 +42,9 @@ class Resource(BaseModel):
 
 class Machine(BaseModel):
     id: str
-    type: str  # 'electric-mining-drill' | 'stone-furnace' | 'assembling-machine-1'
+    type: str  # miner: 'electric-mining-drill'; furnace: 'stone-furnace' |
+               # 'steel-furnace' | 'electric-furnace'; assembler:
+               # 'assembling-machine-1' | '...-2' | '...-3'
     x: int
     y: int
     # For miners, `direction` is the drop direction (facing) — determines
@@ -77,7 +79,7 @@ class Inserter(BaseModel):
     x: int
     y: int
     direction: Direction
-    type: Literal["inserter"] = "inserter"
+    type: Literal["inserter", "fast-inserter", "stack-inserter"] = "inserter"
     kind: Literal["inserter"] = "inserter"
 
 
@@ -91,6 +93,9 @@ class Belt(BaseModel):
     id: str
     item: str
     tiles: list[BeltTile] = Field(min_length=1)
+    # Belt tier controls per-tile throughput cap in the sim. Default yellow.
+    type: Literal["transport-belt", "fast-transport-belt",
+                  "express-transport-belt"] = "transport-belt"
 
 
 class Layout(BaseModel):
@@ -303,11 +308,12 @@ class Layout(BaseModel):
 
 
 def _machine_kind(machine_type: str) -> str:
-    """Map machine entity id → simulator kind."""
+    """Map machine entity id → simulator kind (miner / furnace / assembler)."""
     if machine_type == "electric-mining-drill":
         return "miner"
-    if machine_type == "stone-furnace":
+    if machine_type in ("stone-furnace", "steel-furnace", "electric-furnace"):
         return "furnace"
-    if machine_type == "assembling-machine-1":
+    if machine_type in ("assembling-machine-1", "assembling-machine-2",
+                       "assembling-machine-3"):
         return "assembler"
     raise ValueError(f"unknown machine type: {machine_type}")

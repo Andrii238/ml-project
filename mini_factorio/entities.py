@@ -26,18 +26,44 @@ class PlaceableDef:
 
 
 MACHINES: dict[str, MachineDef] = {
+    # ------------------------- tier-1 -------------------------
     'electric-mining-drill': MachineDef(id='electric-mining-drill', size=(3, 3), crafting_speed=0.5, cost={'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 10}, fuel_category=None, usage_kw=90.0),
     'stone-furnace': MachineDef(id='stone-furnace', size=(2, 2), crafting_speed=1.0, cost={'stone': 5}, fuel_category='chemical', usage_kw=90.0),
     'assembling-machine-1': MachineDef(id='assembling-machine-1', size=(3, 3), crafting_speed=0.5, cost={'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 9}, fuel_category=None, usage_kw=75.0),
+    # ------------------------- tier-2 -------------------------
+    'steel-furnace': MachineDef(id='steel-furnace', size=(2, 2), crafting_speed=2.0, cost={'steel-plate': 6, 'stone-brick': 10}, fuel_category='chemical', usage_kw=90.0),
+    'assembling-machine-2': MachineDef(id='assembling-machine-2', size=(3, 3), crafting_speed=0.75, cost={'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 9, 'steel-plate': 2}, fuel_category=None, usage_kw=155.0),
+    # ------------------------- tier-3 -------------------------
+    'electric-furnace': MachineDef(id='electric-furnace', size=(3, 3), crafting_speed=2.0, cost={'steel-plate': 10, 'advanced-circuit': 5, 'stone-brick': 10}, fuel_category=None, usage_kw=180.0),
+    'assembling-machine-3': MachineDef(id='assembling-machine-3', size=(3, 3), crafting_speed=1.25, cost={'assembling-machine-2': 2, 'iron-gear-wheel': 25, 'electronic-circuit': 5}, fuel_category=None, usage_kw=388.0),
 }
 
 PLACEABLES: dict[str, PlaceableDef] = {
+    # tier-1
     'transport-belt': PlaceableDef(id='transport-belt', cost_per_place={'iron-plate': 0.5, 'iron-gear-wheel': 0.5}),
     'inserter': PlaceableDef(id='inserter', cost_per_place={'electronic-circuit': 1.0, 'iron-gear-wheel': 1.0, 'iron-plate': 1.0}),
+    # tier-2
+    'fast-transport-belt': PlaceableDef(id='fast-transport-belt', cost_per_place={'iron-gear-wheel': 5.0, 'transport-belt': 1.0}),
+    'fast-inserter': PlaceableDef(id='fast-inserter', cost_per_place={'electronic-circuit': 2.0, 'iron-plate': 2.0, 'inserter': 1.0}),
+    # tier-3
+    'express-transport-belt': PlaceableDef(id='express-transport-belt', cost_per_place={'iron-gear-wheel': 10.0, 'fast-transport-belt': 1.0, 'lubricant': 20.0}),
+    'stack-inserter': PlaceableDef(id='stack-inserter', cost_per_place={'electric-engine-unit': 1.0, 'advanced-circuit': 15.0, 'iron-gear-wheel': 15.0, 'fast-inserter': 1.0}),
 }
 
-BELT_SPEED = 15.0  # items/sec, yellow belt full throughput
-INSERTER_THROUGHPUT = 0.83  # items/sec, basic inserter
+# Per-entity throughput lookups. Sim reads from these dicts instead of global
+# constants so tier-2 / tier-3 layouts get their real speeds.
+BELT_SPEED: dict[str, float] = {
+    'transport-belt': 15.0,          # yellow, tier-1
+    'fast-transport-belt': 30.0,     # red, tier-2
+    'express-transport-belt': 45.0,  # blue, tier-3
+}
+
+INSERTER_THROUGHPUT: dict[str, float] = {
+    'inserter': 0.83,          # basic, tier-1
+    'fast-inserter': 2.31,     # tier-2
+    'stack-inserter': 12.0,    # tier-3 (real value depends on stack-size research)
+}
+
 COAL_ENERGY_MJ = 4.0  # MJ per coal unit
 
 # Resource types available as ore patches on the map.

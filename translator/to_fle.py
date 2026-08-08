@@ -27,7 +27,7 @@ of the blueprint dict. Plan.md §FLE integration covers the run-side.
 from __future__ import annotations
 
 from mini_factorio.entities import MACHINES
-from mini_factorio.layout import OPPOSITE, Belt, Inserter, Layout, Machine, Resource
+from mini_factorio.layout import DIR_DELTA, OPPOSITE, Belt, Inserter, Layout, Machine, Resource
 
 # Factorio 2.0 uses doubled direction indices (16-way for rails). Cardinal
 # entities like belts / inserters / assemblers use these values.
@@ -142,6 +142,47 @@ def _power_grid_commands(layout: Layout) -> list[str]:
     return cmds
 
 
+def _dead_end_sink_commands(layout: Layout) -> list[str]:
+    """For each belt with no consumer inserter, place an inserter + steel-chest
+    two tiles downstream of the belt tip. Mirrors the sim, which treats such
+    belts as feeding an implicit sink. Chests may be placed outside the layout
+    grid (Factorio's surface is unbounded).
+    """
+    inserter_pickup_tiles: set[tuple[int, int]] = set()
+    for i in layout.inserters:
+        odx, ody = DIR_DELTA[OPPOSITE[i.direction]]
+        inserter_pickup_tiles.add((i.x + odx, i.y + ody))
+
+    occupied = set(layout.occupied_tiles().keys())
+    cmds: list[str] = []
+    for b in layout.belts:
+        if any((t.x, t.y) in inserter_pickup_tiles for t in b.tiles):
+            continue
+        tip = b.tiles[-1]
+        dx, dy = DIR_DELTA[tip.direction]
+        insr_pos = (tip.x + dx, tip.y + dy)
+        chest_pos = (tip.x + 2 * dx, tip.y + 2 * dy)
+        if insr_pos in occupied or chest_pos in occupied:
+            cmds.append(
+                f"-- WARNING: dead-end sink for belt {b.id!r} not placed; "
+                f"tiles {insr_pos} or {chest_pos} occupied"
+            )
+            continue
+        inserter_dir_factorio = FACTORIO_DIRECTION[OPPOSITE[tip.direction]]
+        cmds.append(_create_entity_lua(
+            "inserter",
+            _center(insr_pos[0], insr_pos[1], (1, 1)),
+            direction=inserter_dir_factorio,
+        ))
+        cmds.append(_create_entity_lua(
+            "steel-chest",
+            _center(chest_pos[0], chest_pos[1], (1, 1)),
+        ))
+        occupied.add(insr_pos)
+        occupied.add(chest_pos)
+    return cmds
+
+
 def _resource_commands(res: Resource) -> list[str]:
     cmds: list[str] = []
     for dx in range(res.size):
@@ -168,13 +209,15 @@ def _machine_command(m: Machine) -> str:
 
 def _inserter_command(i: Inserter) -> str:
     pos = _center(i.x, i.y, (1, 1))
-    return _create_entity_lua("inserter", pos, direction=_factorio_inserter_direction(i.direction))
+    # `i.type` carries the tier (inserter / fast-inserter / stack-inserter).
+    return _create_entity_lua(i.type, pos, direction=_factorio_inserter_direction(i.direction))
 
 
 def _belt_commands(b: Belt) -> list[str]:
+    # `b.type` carries the belt tier (transport-belt / fast- / express-).
     return [
         _create_entity_lua(
-            "transport-belt",
+            b.type,
             _center(t.x, t.y, (1, 1)),
             direction=FACTORIO_DIRECTION[t.direction],
         )
@@ -199,6 +242,7 @@ def layout_to_lua_commands(layout: Layout, *, add_power: bool = True) -> list[st
         cmds.append(_inserter_command(i))
     for b in layout.belts:
         cmds.extend(_belt_commands(b))
+    cmds.extend(_dead_end_sink_commands(layout))
     return cmds
 
 
