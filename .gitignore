@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# uv / venv
+.venv/
+uv.lock
+
+# Notebooks
+*.nbconvert.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model checkpoints and training artifacts (heavy, regenerable)
+checkpoints/
+lora_adapters/
+runs/
+outputs/
+wandb/
+
+# Data — factoriolab_data.json IS committed for reproducibility
+# but downloaded model weights are not
+models/
+*.bin
+!unfizzbuzzed_out.bin
+!mini_factorio/data/factoriolab_data.json
+
+# Env
+.env
+.env.local

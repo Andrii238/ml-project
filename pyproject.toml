@@ -1,0 +1,45 @@
+[project]
+name = "factorio-green-science-rl"
+version = "0.1.0"
+description = "Factorio green-science policy improvement via GRPO — internship evaluation project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "matplotlib>=3.9",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyter>=1.0",
+    "ipykernel>=6.29",
+    "ipywidgets>=8.1",
+]
+llm = [
+    "transformers>=4.45",
+    "torch>=2.4",
+    "accelerate>=0.34",
+    "peft>=0.13",
+    "trl>=0.11",
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-xdist>=3.6",
+    "ruff>=0.6",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["task1_gridworld", "mini_factorio", "harness", "training"]
+python_files = ["tests.py", "test_*.py", "*_test.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]
