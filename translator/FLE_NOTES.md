@@ -17,12 +17,8 @@ FLE's REPL model makes this non-trivial. We would need to:
 
 This is viable but more complex than "import blueprint and read output."
 
-## Open questions
-- Does user have Factorio 2.0 license?
-- Is Docker installed?
-- Are 1.1 → 2.0 recipe differences significant for green science?
-
-## Decision needed
-Confirm FLE is the right validation tool, or pivot to:
-- Factorio 1.1 headless server directly
-- A different validation approach
+## Resolved
+- License: only needed for graphics/GUI. FLE runs the dedicated server headlessly — free.
+- Docker: standard infra, no issue.
+- Recipe data updated to 2.0.77 (factoriolab public/data/2.0/). Green science recipe unchanged from 1.1.
+- FLE is confirmed as validation tool.
