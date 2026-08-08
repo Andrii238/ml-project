@@ -554,6 +554,76 @@ Package manager: `uv` (fast, modern, single-file config).
 
 ---
 
+## FLE cross-check findings — first live run (2026-08-08)
+
+First live run of `translator/fle_driver.smoke_test()` and `validate_and_measure()` against a real Factorio 2.0.73 dedicated server surfaced both API discrepancies and a substantive simulator/reality gap. All API fixes are landed; the simulator gap is being addressed via the "option 1" tightening described below.
+
+### API discoveries (all documented in `translator/FLE_NOTES.md`)
+
+- **FLE default RCON port is 27000** (FLE's `START_RCON_PORT`), password `'factorio'`. Not 27015.
+- **FLE's `FactorioInstance.eval()` runs Python** (their agent REPL), not raw Lua. For raw Lua we bypass `FactorioInstance` and use `factorio-rcon-py.RCONClient.send_command("/sc <lua>")` directly (a transitive FLE dep).
+- **Factorio 2.0 renamed the stats API**: `force.item_production_statistics` (attribute) → `force.get_item_production_statistics(surface)` (method). Counts are in `stats.input_counts[item_id]` (dict), not `.get_input_count(item_id)`.
+- **Factorio 2.0 removed `global` from `/sc` chunks** (mod-scoped only in 2.0; renamed to `storage`). Cross-command state now lives in Python (driver reads count → sleeps → reads count → subtracts).
+- **Factorio inserter `direction` is the PICKUP direction**, not the drop direction. Our layout schema uses drop direction. Translator now inverts (our 'east' → Factorio direction 12). Verified live via `LuaInserter.pickup_position` read-back.
+- **Furnaces reject `set_recipe()`** with `Entity is not assembling-machine`. Furnaces smelt whatever ore is inserted. Translator now only calls `set_recipe()` for `assembling-machine-1`.
+
+### Simulator-vs-Factorio gap: miner output model
+
+Our simulator lets an inserter pick from **any** tile of a miner's footprint. Real Factorio requires the inserter's `pickup_position` to contain items — mining drills output only at their `drop_position` (a specific tile offset from the drill center in the direction of facing; nothing exists in the drill's body for an inserter to grab).
+
+Concretely, our handcrafted iron-plate layout:
+- Iron miner at (5,1) size 3×3, default facing (north) → drop tile (6, 0).
+- Iron inserter at (8,1) picks from (7,1) — the miner's east edge, which is empty in real Factorio.
+
+Our sim reports 0.3125 iron-plate/sec (nominal). Real Factorio produced 0 over 30 in-game seconds.
+
+**Impact if uncorrected:** GRPO would optimize against phantom layouts — the policy would learn to build configurations that score high in sim but produce nothing when translated. The whole ship-gate mechanism (r ≥ 0.9, MAPE ≤ 20%) exists to catch exactly this.
+
+### Sim tightening (option 1) — implemented
+
+1. **`Machine.direction`** field added (default `"north"`; drop direction for miners, cosmetic for furnace/assembler).
+2. **`Machine.drop_position()`** computed = one tile outside footprint in facing direction.
+3. **Simulator rule:** inserters cannot pick from a miner footprint. Miners produce output only if a belt tile at drop_position matches the miner's `target_resource`. The belt then carries items downstream and inserters pick from the belt.
+4. **Translator:** sends `FACTORIO_DIRECTION[miner.direction]` for miners (no inversion — Factorio drill direction = drop direction).
+5. **Tests** updated to use miner→belt→inserter chains.
+
+### Cross-check result (2026-08-08, evening)
+
+**DAG sim is accurate to 0.3% on iron-plate rate.** Live measurement:
+
+```
+sim (nominal):    0.3125 iron-plate/sec
+FLE (measured):   0.3117 iron-plate/sec
+error:            0.3%
+```
+
+**Correction of an earlier claim.** The first cross-check reported the DAG was 78% off. That was **measurement error, not sim error.**
+
+Apple Silicon Docker + Factorio container is CPU-bounded at ~22 game-seconds per wall-second when we ask for `game.speed = 100`. The driver's `time.sleep(60/100) = 0.6 wall-sec` gave ~13 game-seconds elapsed, but we divided by 60. So all measured rates were ~4× low. Once corrected — sample `game.tick` before/after, use `(tick_delta / 60)` as the true measurement window — the DAG matches FLE within noise on well-formed layouts.
+
+**Remaining gap: terminal-output backpressure.** An assembler-1 running `iron-gear-wheel` with nothing consuming its gears reaches `status=full_output` and stops. Our sim reports nominal gear rate regardless. Same class of bug as the miner drop_position: the sim needs a rule that a furnace/assembler produces output only when a downstream consumer exists. Fix in progress (see next section).
+
+Because the DAG is accurate under held assumptions and cheap to evaluate, the plan continues to use it. A tick-based simulator was considered as a more radical alternative and shelved — the DAG's per-eval cost (< 1 ms) leaves plenty of budget for GRPO's ~5000 evaluations, and remaining fidelity gaps are individual rules to add, not systemic issues with the abstraction.
+
+### Sim tightening (option 2) — output-consumer requirement
+
+**Rule:** a furnace/assembler produces output only when at least one downstream extractor exists — either an inserter whose pickup tile is on the machine's footprint, or (rare) a belt tile at an output-adjacent tile that the sim can identify as carrying the machine's output item. Otherwise `machine_rate = 0`.
+
+**Effect:** every real green-science chain has a downstream consumer for every intermediate product, so this rule doesn't change layouts that would run in Factorio. It rejects sim-only phantom production (terminal producers that our sim previously reported at nominal).
+
+**Not modeled explicitly (deliberate simplification):** the finite output-slot buffer size. When a downstream consumer exists but is intermittent, real Factorio's small output buffer (empirically ~40 items for an idle stone-furnace under our probe) can cause micro-stops. The sim treats consumer presence as a boolean; if adverse, this contributes a small MAPE.
+
+### FLE driver fix — real game-time via game.tick
+
+`translator/fle_driver.validate_and_measure` now:
+1. Reads `game.tick` before the measurement window.
+2. Sleeps enough wall time to elapse the target game-seconds even if the container is CPU-limited.
+3. Reads `game.tick` after. Uses `(tick_delta / 60)` as the true measurement window in the rate denominator.
+
+Without this fix any rate measurement on a CPU-limited container reads ~4× low.
+
+---
+
 ## Open items (defaults set, easily adjusted during execution)
 
 - **Reward weights** (α=0.001, β=0.01, γ=0.05): tuned **on the training split only**, never on val. Val is untouched until final reporting.

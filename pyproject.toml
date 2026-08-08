@@ -30,12 +30,15 @@ dev = [
     "pytest-xdist>=3.6",
     "ruff>=0.6",
 ]
+fle = [
+    "factorio-learning-environment",
+]
 
 [tool.uv]
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["task1_gridworld", "mini_factorio", "harness", "training"]
+testpaths = ["task1_gridworld", "mini_factorio", "harness", "translator", "training"]
 python_files = ["tests.py", "test_*.py", "*_test.py"]
 
 [tool.ruff]
