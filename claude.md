@@ -86,6 +86,16 @@ What was built:
 
 Design decisions documented in plan.md and notebooks.
 
+### Setup status (complete as of 2026-08-07)
+
+- Task 1 complete and committed.
+- Directory structure created: `mini_factorio/`, `harness/`, `training/`, `translator/`.
+- factoriolab data downloaded: `mini_factorio/data/factoriolab_data.json` (Factorio 2.0.77, MIT).
+- FLE confirmed: `pip install factorio-learning-environment`, Docker Desktop installed (free), connects via RCON. No Factorio license needed.
+- Baseline model: `Qwen2.5-Coder-1.5B-Instruct` (HuggingFace).
+- All deps in `pyproject.toml` including `[llm]` extra (transformers, trl, peft, bitsandbytes, datasets).
+- **Next session starts Task 2 implementation immediately.**
+
 ### Objective 2: Factorio Green Science Environment
 
 Create a measurable simplified Factorio-like environment focused on green science output.
