@@ -136,8 +136,9 @@ def _pair_from_removal(layout: Layout, remove: list, kind: str, lineno: int) -> 
                    strip_kind=kind)
 
 
-SAMPLES_PER_STRIP = 8  # random strip-subsets per (blueprint, strip-size)
+SAMPLES_PER_STRIP = 12  # random strip-subsets per (blueprint, strip-size)
 STRIP_SIZES = (1, 2, 3)  # keep targets SHORT — format-only SFT
+MAX_ENTITIES = 80       # drop giant blueprints; prompt token budget can't fit them
 
 
 def build_pairs(seed: int = 42) -> list[SFTPair]:
@@ -158,8 +159,8 @@ def build_pairs(seed: int = 42) -> list[SFTPair]:
         all_entities: list = (
             list(layout.machines) + list(layout.inserters) + list(layout.belts)
         )
-        if not all_entities:
-            continue
+        if not all_entities or len(all_entities) > MAX_ENTITIES:
+            continue  # skip giant blueprints — prompt exceeds token budget
         for n in STRIP_SIZES:
             k = min(n, len(all_entities))
             for s in range(SAMPLES_PER_STRIP):
