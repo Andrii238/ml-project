@@ -128,24 +128,46 @@ def _pair_from_removal(layout: Layout, remove: list, kind: str, lineno: int) -> 
 
 
 def build_pairs(seed: int = 42) -> list[SFTPair]:
-    """Deterministic pair generation: 5 pairs per usable blueprint."""
+    """Deterministic pair generation.
+
+    Two data sources:
+      1. Blueprint pairs (65): strip-and-re-add on 13 FLE-validated blueprints.
+      2. Oracle-solver pairs (~224): programmatic miner+belt layouts for each
+         resource type on each of 60 training layouts (from `oracle_solver`).
+
+    Blueprint pairs teach assembler chain patterns. Solver pairs teach miner
+    placement + belt routing + correct target_resource. Combined ~289 pairs.
+    """
+    from mini_factorio.random_layouts import train_val_split
+    from training.oracle_solver import solve
+
     rng = random.Random(seed)
     pairs: list[SFTPair] = []
+    # 1. Blueprint-derived pairs.
     for lineno, layout in _load_layouts():
         all_entities: list = (
             list(layout.machines) + list(layout.inserters) + list(layout.belts)
         )
         if not all_entities:
             continue
-        # From-scratch: remove everything.
         pairs.append(_pair_from_removal(layout, all_entities,
                                         "from_scratch", lineno))
-        # Partial strips of N=1..4 (bounded by pool size).
         for n in (1, 2, 3, 4):
             k = min(n, len(all_entities))
             sample = rng.sample(all_entities, k)
             pairs.append(_pair_from_removal(layout, sample,
                                             f"partial_{n}", lineno))
+    # 2. Oracle-solver pairs. Input = the empty training layout; target = the
+    # solver's edit list. Uses train seeds so val is untouched.
+    train, _ = train_val_split(60, 20)
+    for i, layout in enumerate(train):
+        for result in solve(layout):
+            pairs.append(SFTPair(
+                stripped=layout,
+                edits=result.edits,
+                source_line=-1000 - i,   # negative to distinguish from blueprint lines
+                strip_kind=result.template_name,
+            ))
     return pairs
 
 
