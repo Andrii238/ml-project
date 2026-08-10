@@ -56,7 +56,7 @@ class SFTHyperparams:
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 1
     gradient_accumulation_steps: int = 8
-    max_seq_length: int = 8192
+    max_seq_length: int = 4096
     seed: int = 42
     n_train_layouts: int = 60
     rejection_samples_per_layout: int = 16
@@ -202,7 +202,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num-train-epochs", type=int, default=3)
     p.add_argument("--per-device-train-batch-size", type=int, default=1)
     p.add_argument("--gradient-accumulation-steps", type=int, default=8)
-    p.add_argument("--max-seq-length", type=int, default=8192)
+    p.add_argument("--max-seq-length", type=int, default=4096)
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args()
 
