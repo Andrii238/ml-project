@@ -58,3 +58,18 @@ def build_train_layouts(sizes: SplitSizes | None = None) -> list[Layout]:
     sizes = sizes or SplitSizes()
     train, _ = train_val_split(sizes.train, sizes.val)
     return train
+
+
+def build_curriculum_train_dataset(tokenizer) -> Dataset:
+    """Curriculum-style train dataset for GRPO.
+
+    Uses the stripped-blueprint layouts from `training.sft_data.build_pairs`
+    (partial blueprints missing 1-3 entities). GRPO rollouts start from
+    these partial states, so the model's task is to complete a nearly-
+    finished chain — producing reward variance from step 1, unlike empty
+    grids where every rollout scores ~0.
+    """
+    from training.sft_data import build_pairs
+    pairs = build_pairs()
+    rows = [_row(p.stripped, tokenizer) for p in pairs]
+    return Dataset.from_list(rows)

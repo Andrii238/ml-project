@@ -28,7 +28,7 @@ from peft import LoraConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
-from training.data import SplitSizes, build_datasets
+from training.data import SplitSizes, build_curriculum_train_dataset, build_datasets
 from training.reward_wrapper import reward_fn
 
 BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
@@ -105,10 +105,15 @@ def train(args: argparse.Namespace) -> None:
         model = PeftModel.from_pretrained(model, args.init_adapter)
         model = model.merge_and_unload()
 
-    train_ds, _ = build_datasets(
-        tokenizer,
-        sizes=SplitSizes(train=args.n_train, val=args.n_val),
-    )
+    if args.curriculum:
+        print("Using curriculum start layouts (stripped blueprints).", flush=True)
+        train_ds = build_curriculum_train_dataset(tokenizer)
+    else:
+        train_ds, _ = build_datasets(
+            tokenizer,
+            sizes=SplitSizes(train=args.n_train, val=args.n_val),
+        )
+    print(f"Train dataset size: {len(train_ds)}", flush=True)
 
     trainer = GRPOTrainer(
         model=model,
@@ -132,19 +137,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--init-adapter", type=str, default=None,
                    help="Path to SFT adapter to merge into base before GRPO. "
                         "If unset, GRPO starts from raw base model (policy_0).")
+    p.add_argument("--curriculum", action="store_true",
+                   help="Sample GRPO prompts from stripped blueprints instead "
+                        "of random empty grids. Needed for group reward variance.")
 
     # Data
     p.add_argument("--n-train", type=int, default=60)
     p.add_argument("--n-val", type=int, default=20)
 
     # GRPO
-    p.add_argument("--group-size", type=int, default=8)
+    p.add_argument("--group-size", type=int, default=4)
     p.add_argument("--kl-beta", type=float, default=0.04)
     p.add_argument("--mu", type=int, default=1, help="Inner GRPO updates per batch")
     p.add_argument("--learning-rate", type=float, default=5e-5)
     p.add_argument("--temperature", type=float, default=0.8)
-    p.add_argument("--max-prompt-length", type=int, default=2048)
-    p.add_argument("--max-completion-length", type=int, default=1024)
+    p.add_argument("--max-prompt-length", type=int, default=3500)
+    p.add_argument("--max-completion-length", type=int, default=512)
 
     # Optimizer / batching
     p.add_argument("--per-device-train-batch-size", type=int, default=1)
