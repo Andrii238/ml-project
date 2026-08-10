@@ -1,16 +1,15 @@
 """Build SFT training pairs from FLE-validated blueprints.
 
-Each pair = (stripped_layout, edit_list_to_re_add_removed_entities).
+Format-only SFT: teach JSON schema compliance and valid entity/recipe names,
+NOT factory design. Small targets (1-3 edits each), many random samples per
+blueprint. Oracle miner+belt pairs excluded (they taught the wrong pattern).
 
-Source: `results/blueprint_classification.json` + `.new.json` filtered to
-`build_errors == 0` and `top_item != invalid`. Blueprints decoded via
-`translator.from_fle.blueprint_dict_to_layout`.
+Source filter: blueprints with `build_errors == 0` AND `top_item != invalid`
+AND actual green-science production > 0. Lines 17/41/43 fail this filter —
+they pass build/top_item checks but produce belts/gears/copper-cable only.
 
-Augmentation: for each blueprint, 5 pairs
-    - 1 "from-scratch" pair (all machines/inserters/belts stripped → full re-add)
-    - 4 "partial-strip" pairs (strip 1, 2, 3, 4 random entities → re-add subset)
-
-Deterministic seeding so the dataset is reproducible.
+Augmentation: for each GS-producing blueprint, sample many small strips.
+Deterministic seeding.
 """
 from __future__ import annotations
 
@@ -35,8 +34,17 @@ class SFTPair:
     strip_kind: str        # "from_scratch" | "partial_N"
 
 
+GS_ITEM = "logistic-science-pack"
+
+
 def _load_usable_linenos() -> list[int]:
-    """Return blueprint line numbers with build_errors=0 and produced output."""
+    """Return blueprint line numbers that actually produce green science.
+
+    Filter: build_errors==0 AND top_item != invalid AND green-science-rate > 0.
+    The green-science filter drops lines 17 (belts+gears only), 41/43
+    (copper-cable only) which pass the surface checks but teach the wrong
+    completion pattern.
+    """
     linenos: list[int] = []
     for path in (CLASSIF_1, CLASSIF_2):
         for entry in json.loads(path.read_text()):
@@ -44,6 +52,7 @@ def _load_usable_linenos() -> list[int]:
                 entry.get("build_errors") == 0
                 and entry.get("top_item")
                 and entry.get("top_item") != "invalid"
+                and (entry.get("rates") or {}).get(GS_ITEM, 0) > 0
             ):
                 linenos.append(entry["lineno"])
     return sorted(set(linenos))
@@ -127,47 +136,36 @@ def _pair_from_removal(layout: Layout, remove: list, kind: str, lineno: int) -> 
                    strip_kind=kind)
 
 
+SAMPLES_PER_STRIP = 8  # random strip-subsets per (blueprint, strip-size)
+STRIP_SIZES = (1, 2, 3)  # keep targets SHORT — format-only SFT
+
+
 def build_pairs(seed: int = 42) -> list[SFTPair]:
-    """Deterministic pair generation.
+    """Deterministic small-target pair generation for format-only SFT.
 
-    Two data sources:
-      1. Blueprint pairs (65): strip-and-re-add on 13 FLE-validated blueprints.
-      2. Oracle-solver pairs (~224): programmatic miner+belt layouts for each
-         resource type on each of 60 training layouts (from `oracle_solver`).
+    For each green-science-producing blueprint, sample many small strips
+    (1, 2, or 3 random entities removed). Target = the edits that re-add
+    just those removed entities. Small targets keep the model focused on
+    JSON format compliance rather than memorizing full factory rebuilds.
 
-    Blueprint pairs teach assembler chain patterns. Solver pairs teach miner
-    placement + belt routing + correct target_resource. Combined ~289 pairs.
+    ~10 blueprints × 3 strip-sizes × 8 samples = ~240 pairs.
+    Oracle miner+belt pairs are EXCLUDED — they taught "output miners and
+    belts, forget assemblers" and hurt SFT.
     """
-    from mini_factorio.random_layouts import train_val_split
-    from training.oracle_solver import solve
-
     rng = random.Random(seed)
     pairs: list[SFTPair] = []
-    # 1. Blueprint-derived pairs.
     for lineno, layout in _load_layouts():
         all_entities: list = (
             list(layout.machines) + list(layout.inserters) + list(layout.belts)
         )
         if not all_entities:
             continue
-        pairs.append(_pair_from_removal(layout, all_entities,
-                                        "from_scratch", lineno))
-        for n in (1, 2, 3, 4):
+        for n in STRIP_SIZES:
             k = min(n, len(all_entities))
-            sample = rng.sample(all_entities, k)
-            pairs.append(_pair_from_removal(layout, sample,
-                                            f"partial_{n}", lineno))
-    # 2. Oracle-solver pairs. Input = the empty training layout; target = the
-    # solver's edit list. Uses train seeds so val is untouched.
-    train, _ = train_val_split(60, 20)
-    for i, layout in enumerate(train):
-        for result in solve(layout):
-            pairs.append(SFTPair(
-                stripped=layout,
-                edits=result.edits,
-                source_line=-1000 - i,   # negative to distinguish from blueprint lines
-                strip_kind=result.template_name,
-            ))
+            for s in range(SAMPLES_PER_STRIP):
+                sample = rng.sample(all_entities, k)
+                pairs.append(_pair_from_removal(
+                    layout, sample, f"partial_{n}_s{s}", lineno))
     return pairs
 
 
