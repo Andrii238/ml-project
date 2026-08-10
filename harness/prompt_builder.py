@@ -173,10 +173,11 @@ SYSTEM_PROMPT = (
 
 
 def build_prompt(layout: Layout) -> str:
+    # Few-shot _examples_block was removed to stay under the 4096-token budget
+    # for SFT/eval on T4. SFT is expected to teach format compliance instead.
     return "\n\n".join([
         _rules_block(),
         _edit_schema_block(),
-        _examples_block(),
         _layout_block(layout),
         "## Your reply\nReturn only the edits JSON. Do not return an empty edit list "
         "unless the layout is already saturated — always try to add or improve something.",
