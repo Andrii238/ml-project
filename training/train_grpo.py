@@ -60,7 +60,6 @@ def _grpo_config(args: argparse.Namespace) -> GRPOConfig:
         output_dir=args.output_dir,
         # Sampling
         num_generations=args.group_size,          # G in plan (paper: 64, ours: 8)
-        max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
         temperature=args.temperature,
         # Optimization
