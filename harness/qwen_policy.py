@@ -30,7 +30,7 @@ class QwenPolicy:
     torch_dtype: str = "float16"     # "float16" | "bfloat16" | "float32"
     temperature: float = 0.7
     top_p: float = 0.9
-    max_new_tokens: int = 1024
+    max_new_tokens: int = 2048
     do_sample: bool = True
 
     _model: Any = field(default=None, init=False, repr=False)
@@ -66,14 +66,25 @@ class QwenPolicy:
         """Prompt-in, completion-out. Wraps `prompt` as a user message."""
         return self.chat([{"role": "user", "content": prompt}])
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
-        """Chat-format entry point. Returns the assistant's reply string only."""
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        response_prefix: str = "",
+    ) -> str:
+        """Chat-format entry point. Returns the assistant's reply string.
+
+        If `response_prefix` is set, that text is appended to the templated
+        prompt (as if the assistant already emitted it) and prepended back to
+        the returned string. Used to constrain outputs to a specific shape
+        (e.g. '{"edits": [' forces the reply to be a JSON edit list).
+        """
         import torch
 
         self._load()
         text = self._tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True,
         )
+        text = text + response_prefix
         inputs = self._tokenizer(text, return_tensors="pt").to(self.device)
         with torch.no_grad():
             outputs = self._model.generate(
@@ -85,8 +96,13 @@ class QwenPolicy:
                 pad_token_id=self._tokenizer.eos_token_id,
             )
         completion_ids = outputs[0][inputs["input_ids"].shape[1]:]
-        return self._tokenizer.decode(completion_ids, skip_special_tokens=True)
+        completion = self._tokenizer.decode(completion_ids, skip_special_tokens=True)
+        return response_prefix + completion
 
     def propose_edits(self, layout: Layout) -> str:
-        """Full harness path: layout -> prompt -> chat -> raw completion."""
-        return self.chat(build_chat_messages(layout))
+        """Full harness path: layout -> prompt -> chat -> raw completion.
+
+        Uses assistant-prefill `{"edits": [` so the reply is forced into a
+        JSON edit list shape. Removes the "wrote prose first" failure mode.
+        """
+        return self.chat(build_chat_messages(layout), response_prefix='{"edits": [')

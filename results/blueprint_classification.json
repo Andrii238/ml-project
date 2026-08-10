@@ -1,0 +1,604 @@
+[
+  {
+    "lineno": 1,
+    "label": "Green Science",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'bob-basic-electronic-components'",
+      "assembler bp_m2: unknown recipe 'angels-wire-tin'",
+      "assembler bp_m3: unknown recipe 'bob-basic-electronic-components'"
+    ]
+  },
+  {
+    "label": "line3:Green Science no belt[item=logistic-science-pack]",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.3274215552523874
+    },
+    "lineno": 3,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line5:Green Science with Belt [item=logistic-science-pack][item=transport-belt]",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 1.0026954177897573
+    },
+    "lineno": 5,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "lineno": 7,
+    "label": "Green Science Mall",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'hazard-concrete'",
+      "assembler bp_m2: unknown recipe 'concrete'",
+      "assembler bp_m3: unknown recipe 'concrete'"
+    ]
+  },
+  {
+    "label": "line9:Green Science Element",
+    "build_errors": 196,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 6.049180327868853
+    },
+    "lineno": 9,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line11:Green Science",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.25806451612903225
+    },
+    "lineno": 11,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "lineno": 13,
+    "label": "Green Science 60/m (Space Exploration)",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m10: unknown recipe 'electric-motor'",
+      "assembler bp_m11: unknown recipe 'electric-motor'",
+      "assembler bp_m17: unknown recipe 'iron-stick'"
+    ]
+  },
+  {
+    "label": "line15:line15",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.24357239512855208
+    },
+    "lineno": 15,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line17:Blueprint",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 1.2968536251709988,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 2.3310533515731877,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.0
+    },
+    "lineno": 17,
+    "top_item": "transport-belt"
+  },
+  {
+    "lineno": 21,
+    "label": "Early Game Mall v8",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "furnace bp_m13: missing recipe",
+      "furnace bp_m14: missing recipe",
+      "furnace bp_m15: missing recipe"
+    ]
+  },
+  {
+    "lineno": 23,
+    "label": "science r&g",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m21: unknown recipe 'automation-science-pack'",
+      "assembler bp_m22: unknown recipe 'automation-science-pack'",
+      "assembler bp_m23: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 25,
+    "label": "science trio",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'stone-wall'",
+      "assembler bp_m2: unknown recipe 'grenade'",
+      "assembler bp_m3: unknown recipe 'grenade'"
+    ]
+  },
+  {
+    "lineno": 27,
+    "label": "Jump Start Base (+Steel) 0.18 by Nilaus",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'iron-stick'",
+      "assembler bp_m3: unknown recipe 'medium-electric-pole'",
+      "assembler bp_m4: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 29,
+    "label": "2  - [item=logistic-science-pack]",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m7: unknown recipe 'automation-science-pack'",
+      "assembler bp_m8: unknown recipe 'automation-science-pack'",
+      "assembler bp_m9: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 31,
+    "label": "3 - [item=military-science-pack]",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m7: unknown recipe 'automation-science-pack'",
+      "assembler bp_m8: unknown recipe 'automation-science-pack'",
+      "assembler bp_m9: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 33,
+    "label": "4 - [item=chemical-science-pack]",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'chemical-science-pack'",
+      "furnace bp_m2: missing recipe",
+      "furnace bp_m3: missing recipe"
+    ]
+  },
+  {
+    "lineno": 35,
+    "label": "2 Sciences",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m8: unknown recipe 'automation-science-pack'",
+      "assembler bp_m10: unknown recipe 'automation-science-pack'",
+      "assembler bp_m12: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 37,
+    "label": "3 Sciences",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'advanced-circuit'",
+      "assembler bp_m2: unknown recipe 'advanced-circuit'",
+      "assembler bp_m3: unknown recipe 'engine-unit'"
+    ]
+  },
+  {
+    "lineno": 39,
+    "label": "0.17 JumpStart to Bots v4 (Bique)",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "furnace bp_m1: missing recipe",
+      "furnace bp_m2: missing recipe",
+      "furnace bp_m3: missing recipe"
+    ]
+  },
+  {
+    "label": "line41:Greens",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 26.29032258064516,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.0
+    },
+    "lineno": 41,
+    "top_item": "copper-cable"
+  },
+  {
+    "label": "line43:Greens",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 20.093023255813954,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.0
+    },
+    "lineno": 43,
+    "top_item": "copper-cable"
+  },
+  {
+    "label": "line45:Greens",
+    "build_errors": 48,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 36.04819277108434,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.0
+    },
+    "lineno": 45,
+    "top_item": "copper-cable"
+  },
+  {
+    "lineno": 47,
+    "label": "Red and Green Research",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m3: unknown recipe 'automation-science-pack'",
+      "assembler bp_m4: unknown recipe 'automation-science-pack'",
+      "assembler bp_m5: unknown recipe 'automation-science-pack'"
+    ]
+  },
+  {
+    "lineno": 49,
+    "label": "Science Core",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "furnace bp_m3: missing recipe",
+      "assembler bp_m6: unknown recipe 'stone-wall'",
+      "assembler bp_m7: unknown recipe 'pipe'"
+    ]
+  },
+  {
+    "lineno": 51,
+    "label": "Circuits Phase 2",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m7: unknown recipe 'low-density-structure'",
+      "assembler bp_m8: unknown recipe 'low-density-structure'",
+      "assembler bp_m9: unknown recipe 'low-density-structure'"
+    ]
+  },
+  {
+    "lineno": 53,
+    "label": "Circuits Phase 1",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m2: unknown recipe 'advanced-circuit'",
+      "assembler bp_m3: unknown recipe 'advanced-circuit'",
+      "assembler bp_m4: unknown recipe 'advanced-circuit'"
+    ]
+  },
+  {
+    "label": "line55:Artistic Logistics Science Mk0",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 4.005298013245033,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.6516556291390728
+    },
+    "lineno": 55,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line57:Logistic Science Pack",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 1.0285714285714285
+    },
+    "lineno": 57,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "lineno": 59,
+    "label": "Green Science Mall",
+    "build_errors": null,
+    "rates": {
+      "iron-plate": null,
+      "copper-plate": null,
+      "iron-gear-wheel": null,
+      "copper-cable": null,
+      "electronic-circuit": null,
+      "transport-belt": null,
+      "inserter": null,
+      "logistic-science-pack": null
+    },
+    "top_item": "invalid",
+    "invalid_reason": [
+      "assembler bp_m1: unknown recipe 'hazard-concrete'",
+      "assembler bp_m2: unknown recipe 'concrete'",
+      "assembler bp_m3: unknown recipe 'concrete'"
+    ]
+  },
+  {
+    "label": "line61:Green Science",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.2598105548037889
+    },
+    "lineno": 61,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line63:[item=logistic-science-pack]Green Science Stack[item=logistic-science-pack]",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 0.0,
+      "copper-cable": 20.053908355795148,
+      "electronic-circuit": 0.0,
+      "transport-belt": 0.0,
+      "inserter": 0.0,
+      "logistic-science-pack": 0.42048517520215634
+    },
+    "lineno": 63,
+    "top_item": "logistic-science-pack"
+  },
+  {
+    "label": "line65:Green Science",
+    "build_errors": 0,
+    "rates": {
+      "iron-plate": 0.0,
+      "copper-plate": 0.0,
+      "iron-gear-wheel": 1.0026525198938991,
+      "copper-cable": 0.0,
+      "electronic-circuit": 0.0,
+      "transport-belt": 2.0053050397877983,
+      "inserter": 1.0026525198938991,
+      "logistic-science-pack": 0.15915119363395225
+    },
+    "lineno": 65,
+    "top_item": "logistic-science-pack"
+  }
+]

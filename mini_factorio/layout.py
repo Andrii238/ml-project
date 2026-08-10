@@ -304,7 +304,21 @@ class Layout(BaseModel):
         return len(self.occupied_tiles())
 
     def machine_count(self) -> int:
-        return len(self.machines) + len(self.inserters)
+        """Machines only (miners + furnaces + assemblers).
+
+        Inserters are placeables, not machines; they're already captured by
+        the cell-count term of the reward. Historically this method returned
+        machines+inserters, which caused γ·(machines+inserters) to over-penalize
+        realistic layouts (~15 inserters × 0.05 = 0.75 extra penalty).
+        """
+        return len(self.machines)
+
+    def entity_count(self) -> int:
+        """All placed entities: machines + inserters + belt tiles.
+
+        Not currently used by the reward, but exposed for diagnostics.
+        """
+        return len(self.machines) + len(self.inserters) + sum(len(b.tiles) for b in self.belts)
 
 
 def _machine_kind(machine_type: str) -> str:

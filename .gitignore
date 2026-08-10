@@ -31,8 +31,20 @@ wandb/
 # but downloaded model weights are not
 models/
 *.bin
-!unfizzbuzzed_out.bin
 !mini_factorio/data/factoriolab_data.json
+
+# Excluded from public repo (per user)
+claude.md
+CLAUDE.md
+Andrii_plan.md
+unfizzbuzzed_out.bin
+Task.pages
+NEXT_SESSION.md
+
+# Local-only artifacts we don't push to Colab
+ckpts/sft_dry/
+ckpts/*/checkpoint-*
+ckpts/*/checkpoint-*/
 
 # Env
 .env

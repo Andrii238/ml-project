@@ -18,6 +18,9 @@ class AddEntity(BaseModel):
     type: str  # 'electric-mining-drill' | 'stone-furnace' | 'assembling-machine-1'
     x: int
     y: int
+    # Required for miners (drop_position depends on facing); cosmetic for
+    # furnaces/assemblers. Optional so old completions still parse.
+    direction: Direction | None = None
     recipe: str | None = None
     target_resource: str | None = None
 

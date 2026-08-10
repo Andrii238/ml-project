@@ -25,7 +25,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-val", type=int, default=20)
     ap.add_argument("--samples", type=int, default=5)
-    ap.add_argument("--max-new-tokens", type=int, default=512)
+    ap.add_argument("--max-new-tokens", type=int, default=2048)
     ap.add_argument("--temperature", type=float, default=0.7)
     ap.add_argument("--out", type=str, default="results/baseline_eval.json")
     args = ap.parse_args()
@@ -94,6 +94,8 @@ def main() -> int:
                     "n_edits_applied": e.n_edits_applied,
                     "n_edits_attempted": e.n_edits_attempted,
                     "reward": e.reward.to_dict(),
+                    "completion": e.completion,
+                    "edit_errors": e.edit_errors,
                 }
                 for e in episodes
             ],

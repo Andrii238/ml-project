@@ -71,10 +71,13 @@ def evaluate_policy(
     samples_per_layout: int = 1,
 ) -> EvalReport:
     report = EvalReport()
+    # Prefer .propose_edits(layout) if the policy exposes it — it uses chat
+    # format + assistant prefill. Fall back to prompt-in for plain callables.
+    propose = getattr(policy, "propose_edits", None)
     for layout in layouts:
-        prompt = build_prompt(layout)
+        prompt = build_prompt(layout) if propose is None else None
         for _ in range(samples_per_layout):
-            completion = policy(prompt)
+            completion = propose(layout) if propose is not None else policy(prompt)
             parse = parse_edits(completion)
             apply = apply_edits(layout, parse.edits)
             reward = compute_reward(apply.layout)

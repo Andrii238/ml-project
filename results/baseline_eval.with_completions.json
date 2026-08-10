@@ -1,0 +1,1960 @@
+{
+  "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "samples_per_layout": 5,
+  "n_layouts": 20,
+  "summary": {
+    "n_episodes": 100,
+    "mean_reward": -0.45757,
+    "mean_green_science": 0.0,
+    "invalid_json_rate": 0.28,
+    "valid_edit_rate": 0.3783783783783784
+  },
+  "per_layout_rewards": [
+    [
+      0.0,
+      -0.159,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -0.8640000000000001,
+      -0.7050000000000001,
+      -0.7050000000000001,
+      -0.7050000000000001,
+      -0.7050000000000001
+    ],
+    [
+      -0.23500000000000001,
+      -0.172,
+      0.0,
+      -0.08499999999999999,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      -0.159,
+      -0.222,
+      0.0,
+      -0.172,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      -0.022,
+      -0.28300000000000003
+    ],
+    [
+      -0.534,
+      -0.36200000000000004,
+      -0.36200000000000004,
+      -0.36200000000000004,
+      -0.36200000000000004
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      -0.096,
+      -0.033,
+      -0.157,
+      -0.159,
+      -0.157
+    ],
+    [
+      -0.42400000000000004,
+      -0.42400000000000004,
+      -0.42400000000000004,
+      -0.42400000000000004,
+      -0.42400000000000004
+    ],
+    [
+      -0.063,
+      -0.172,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      -0.244,
+      0.0,
+      -0.159
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      -0.159,
+      0.0,
+      0.0,
+      -0.063
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ]
+  ],
+  "episodes": [
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.159,
+        "green_science_rate": 0.0,
+        "materials": 19.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_science_pack\", \"type\": \"assembling-machine-2\", \"x\": 5, \"y\": 11, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n```\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am1\", \"type\": \"assembling-machine-2\", \"x\": 10, \"y\": 13, \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-1\", \"x\": 14, \"y\": 13, \"recipe\": \"electric-furnace\"}, {\"op\": \"\u0e02\u0e2d\u0e07\": \"add_inserter\", \"id\": \"i_am1\", \"x\": 9, \"y\": 13, \"direction\": \"east\"}, {\"op\": \"of\": \"add_inserter\", \"id\": \"i_am2\", \"x\": 15, \"y\": 13, \"direction\": \"east\"}, {\"op\": \"of\": \"add_belt\", \"id\": \"b_am1\", \"item\": \"electronic-circuit\", \"tiles\": [[11,13,\"east\"],[12,13,\"east\"]]}, {\"op\": \"of\": \"add_belt\", \"id\": \"b_am2\", \"item\": \"electric-furnace\", \"tiles\": [[13,13,\"north\"],[14,13,\"north\"],[15,13,\"south\"]]} ]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_science\", \"type\": \"assembling-machine-1\", \"x\": 8, \"y\": 10, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.8640000000000001,
+        "green_science_rate": 0,
+        "materials": 124.0,
+        "cells": 39,
+        "machine_count": 7,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"assembling-machine-2\", \"x\": 3, \"y\": 12, \"direction\": \"north\", \"recipe\": \"electronic-circuit\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"assembling-machine-2\", \"x\": 12, \"y\": 5, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"} ]}.reverse()",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine rand_m5: overlaps entity 'rand_m3' at (12, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"assembling-machine-3\", \"x\": 13, \"y\": 8, \"direction\": \"north\", \"recipe\": \"steel-furnace\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_i7\", \"x\": 14, \"y\": 8, \"direction\": \"east\", \"type\": \"inserter\",@return \"json\"}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler rand_m4: unknown recipe 'steel-furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"gears_assembler\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 4, \"recipe\": \"iron-gear-wheel\"}, {\"op\": \"add_inserter\",=A, id\": \"i_gear_in\", \"x\": 11, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_inserter\", housing_id: \"i_gear_out\", x: 15, y: 5, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine gears_assembler: overlaps entity 'rand_m3' at (12, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_logistic\", \"type\": \"assembling-machine-1\", \"x\": 16, \"y\": 16, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_logistic: footprint out of bounds at (16, 16)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 4, \"recipe\": \"copper-cable\", \"target_resource\": null}, {\"op\": \"\u7b14\u8bb0\u672c\", \"id\": \"b_gear\", \"item\": \"iron-gear-wheel\", \"tiles\": [[16,5,\"east\"],[17,5,\"east\"]]}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.23500000000000001,
+        "green_science_rate": 0.0,
+        "materials": 35.0,
+        "cells": 10,
+        "machine_count": 2,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_science\", \"type\": \"assembling-machine-3\", \"x\": 10, \"y\": 10, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_inserter\", \"id\": \"i_science\", \"x\": 9, \"y\": 10, \"direction\": \"east\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.172,
+        "green_science_rate": 0.0,
+        "materials": 32.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_logistic\", \"type\": \"assembling-machine-3\", \"x\": 5, \"y\": 5, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"sm\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 3}, {\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-2\", \"x\": 13, \"y\": 3}, {\"op\": \"add_inserter\", \"id\": \"i_sm\", \"x\": 10, \"y\": 3, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"i_am2\", \"x\": 13, \"y\": 3, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_sm\", \"item\": \"steel-plate\", \"tiles\": [[11,3,\"east\"],[12,3,\"east\"],[ \u30e0\n",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace sm: missing recipe"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.08499999999999999,
+        "green_science_rate": 0,
+        "materials": 5.0,
+        "cells": 3,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_log_science_pack\", \"type\": \"assembling-machine-3\", \"x\": 11, \"y\": 14, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_inserter\", \"id\": \"i_log_science_pack\", \"x\": 10, \"y\": 14, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_log_science_pack\", \"item\": \"logistic-science-pack\", \"tiles\": [[12,14,\"east\"],[13,14,\"east\"]] }]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_log_science_pack: footprint out of bounds at (11, 16)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_log_science_pack\", \"type\": \"assembling-machine-1\", \"x\": 8, \"y\": 7, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m4\", \"type\": \"assembling-machine-1\", \"x\": 14, \"y\": 5, \"recipe\": \"copper-cable\"}, {\"op\": \"add_inserter\", \"id\": \"i_cable\", \"x\": 13, \"y\": 5, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"ieworthy\", \"x\": 15, \"y\": 5, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine m4: footprint out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assemb_m4\", \"type\": \"assembling-machine-2\", \"x\": 14, \"y\": 5, \"direction\": \"north\", \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_inserter\", \"id\": \"ins_pip\", \"x\": 15, \"y\": 5, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"belt_pip\", \"item\": \"logistic-science-pack\", \"tiles\": [[16,5,\"east\"],[17,5,\"east\"]]} ]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine assemb_m4: footprint out of bounds at (16, 5)",
+        "add_belt: rejected \u2014 belt belt_pip[0]: out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"assembling-machine-3\", \"x\": 4, \"y\": 5, \"direction\": \"north\", \"recipe\": \"steel-furnace\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler rand_m4: unknown recipe 'steel-furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 9, \"y\": 5, \"direction\": \"north\", \"recipe\": \"copper-cable\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"electric-furnace\", \"x\": 8, \"y\": 7, \"direction\": \"north\", \"recipe\": \"inserter\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_m6\", \"type\": \"steel-furnace\", \"x\": 7, \"y\": 0, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine rand_m4: overlaps entity 'rand_m1' at (9, 5)",
+        "add_entity: rejected \u2014 machine rand_m5: overlaps entity 'rand_m2' at (8, 7)",
+        "add_entity: rejected \u2014 machine rand_m6: overlaps entity 'rand_m3' at (7, 0)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 5, \"y\": 7, \"direction\": \"north\", \"recipe\": \"copper-cable\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"electric-furnace\", PDF \"id\": \"rand_m6\", \"type\": \"steel-furnace\", \"x\": 4, \"y\": 0, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"} ]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.159,
+        "green_science_rate": 0,
+        "materials": 19.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-2\", \"x\": 11, \"y\": 1, \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_entity\", \"id\": \"em\", \"type\": \"electric-mining-drill\", \"x\": 1, \"y\": 0}, {\"op\": \"add_entity\", \"id\": \"sm\", \"type\": \"stone-furnace\", \"x\": 1, \"y\": 2}, {\"op\": \"add_entity\", \"id\": \"sf\", \"type\": \"steel-furnace\", \"x\": 1, \"y\": 3}, {\"op\": \"add_entity\", \"id\": \"e1\", \"type\": \"electric-furnace\", \"x\": 1, \"y\": 4}, {\"op\": \"add_entity\", \"id\": \"am3\", \"type\": \"assembling-machine-3\", \"x\": 1, \"y\": 5}, {\"op\": \"add_belt\", \"id\": \"b_em\", \"item\": \"electric-motor\", \"tiles\": [[1,0,\"east\"],[2,0,\"east\"],[3,0,\"east\"],[4,0,\"east\"],[5,0,\"east\"],[6,0,\"east\"],[7,0,\"east\"],[8,0,\"east\"],[9,0,\"east\"],[10,0,\"east\"],[11,0,\"east\"],[12,0,\"east\"],[13,0,\"east\"],[14,0,\"east\"],[15,0,\"east\"]]}, {\"op\": \"add_belt\", \"id\": \"b_sm\", \"item\": \"steel-chest\", \"tiles\": [[1,2,\"east\"],[2,2,\"east\"],[3,2,\"east\"],[4,2,\"east\"],[5,2,\"east\"],[6,2,\"east\"],[7,2,\"east\"],[8,2,\"east\"],[9,2,\"east\"],[10,2,\"east\"],[11,2,\"east\"],[12,2,\"east\"],[13,2,\"east\"],[14,2,\"east\"],[15,2,\"east\"]]}, {\"op\": \"add_belt\", \"id\": \"b_sf\", \"item\": \"steel-chest\", \"tiles\": [[1,3,\"east\"],[2,3,\"east\"],[3,3,\"east\"],[4,3,\"east\"],[5,3,\"east\"],[6,3,\"east\"],[7,3,\"east\"],[8,3,\"east\"],[9,3,\"east\"],[10,3,\"east\"],[11,3,\"east\"],[12,3,\"east\"],[13,3,\"east\"],[14,3,\"east\"],[15,3,\"east\"]]}, {\"op\": \"add_belt\", \"id\": \"b_e1\", \"item\": \"advanced-circuit\", \"tiles\": [[1,4,\"east\"],[2,4,\"east\"],[3,4,\"east\"],[4,4,\"east\"],[5,4,\"east\"],[6,4,\"east\"],[ yanl\u0131r,4,\"east\"],[7,4,\"ToListAsync\"],[8,4,\"east\"],[9,4,\"east\"],[10,4,\"east\"],[11,4,\"east\"],[12,4,\"east\"],[13,4,\"east\"],[14,4,\"east\"],[15,4,\"east\"]]}, {\"op\": \"add_belt\", \"id\": \"b_am2\", \"item\": \"steel-chest\", \"tiles\": [[1,5,\"east\"],[2,5,\"east\"],[3,5,\"east\"],[4,5,\"east\"],[5,5,\"east\"],[6,5,\"east\"],[7,5,\"east\"],[8,5,\"east\"],[9,5,\"east\"],[10,5,\"east\"],[11,5,\"east\"],[12,5,\"east\"],[13,5,\"east\"],[14,5,\"east\"],[15,5,\"east\"]]}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.222,
+        "green_science_rate": 0,
+        "materials": 22.0,
+        "cells": 10,
+        "machine_count": 2,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assembler\", \"type\": \"assembling-machine-2\", \"x\": 13, \"y\": 4, \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_inserter\", \"id\": \"i_circuit_in\", \"x\": 12, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"i_circuit_out\", \"x\": 15, \"y\": 5, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_inserter: rejected \u2014 inserter i_circuit_out: overlaps 'assembler' at (15, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m_f\u5149\u4f0f\u53d1\u7535\", \"type\": \"electric-furnace\", \"x\": 4, \"y\": 15, \"recipe\": \"coal\"}, {\"op\": \"add_entity\", \"id\": \"m_logisticSciencePack\", \"type\": \"assembling_MAXIMUM_speed\", \"x\": 13, \"y\": 15, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine m_f\u5149\u4f0f\u53d1\u7535: footprint out of bounds at (4, 16)",
+        "add_entity: rejected \u2014 machine m_logisticSciencePack: unknown type 'assembling_MAXIMUM_speed'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.172,
+        "green_science_rate": 0.0,
+        "materials": 32.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"ma3\", \"type\": \"assembling-machine-3\", \"x\": 1, \"y\": 3, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_inserter\", \"id\": \"ii\", \"x\": 2, \"y\": 3, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_inserter: rejected \u2014 inserter ii: overlaps 'ma3' at (2, 3)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-2\", \"x\": 13, \"y\": 10, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 4, \"recipe\": \"iron-gear-wheel\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_gear: overlaps entity 'rand_m3' at (12, 4)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smelter\", \"type\": \"steel-furnace\", \"x\": 8, \"y\": 14, \"recipe\": \"steel-plate\", \"target_resource\": \"coal\"}, {\"op\": \"add_inserter\", \"id\": \"i_ste Raf\", \"x\": 7, \"y\": 14, \"direction\": \"east\"} ]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smelter: unknown recipe 'steel-plate'"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 14, \"y\": 12, \"recipe\": \"steel-furnace\", \"target_resource\": null, \"\u4e0d\u5f97\u4e0d\u6dfb\u52a0\u4e00\u4e2a\u94a2\u94c1\u7194\u7089\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-2\", \"x\": 10, \"y\": 13, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"a_fuel\", \"type\": \"electric-furnace\", \"x\": 13, \"y\": 13, \"direction\": \"north\", \"recipe\": \"coal\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_gear: overlaps entity 'rand_m1' at (12, 14)",
+        "add_entity: rejected \u2014 machine a_fuel: overlaps entity 'rand_m1' at (13, 14)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n```",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smelting\", \"type\": \"steel-furnace\", \"x\": 14, \"y\": 4, \"recipe\": \"stone\"}, {\"op\": \"add_belt\", \"id\": \"b_smelting\", \"item\": \"steel-plate\", \"tiles\": [[15,4,\"east\"],[16,4,\"east\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smelting: recipe 'stone' runs on 'miner', not 'furnace'",
+        "add_belt: rejected \u2014 belt b_smelting[1]: out of bounds at (16, 4)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 13, \"y\": 10, \"recipe\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_steel\", \"item\": \"steel-plate\", \"tiles\": [[14,10,\"east\"],[ zaman \"\u0628\u0631\u0634\u0644\u0648\u0646\u0629\n",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smeltery: unknown recipe 'steel-plate'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.022,
+        "green_science_rate": 0,
+        "materials": 2.0,
+        "cells": 2,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_logistic\", \"type\": \"assembling-machine-2\", \"\u00e9lixir\": \"logistic-science-pack\", \"x\": 7, \"y\": 10}, {\"op\": \"add_entity\", \"id\": \"e_furnace\", \"type\": \"electric-furnace\", \"x\": 5, \"y\": 10}, {\"op\": \"add_belt\", \"id\": \"b_logistic\", \"item\": \"logistic-science-pack\", \"tiles\": [[6,10,\"east\"],[7,10,\"east\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler a_logistic: missing recipe",
+        "add_entity: rejected \u2014 furnace e_furnace: missing recipe"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 3,
+      "n_edits_attempted": 4,
+      "reward": {
+        "composite": -0.28300000000000003,
+        "green_science_rate": 0,
+        "materials": 23.0,
+        "cells": 11,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 4, \"recipe\": \"iron-gear-wheel\"}, {\"op\": \"add_inserter\", \"id\": \"i_plate_in\", \"x\": 11, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"i_gear_out\", \"x\": 15, \"y\": 5, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_gear\", \"item\": \"iron-gear-wheel\", \"tiles\": [[16,5,\"east\"],[17,5,\"east\"]]}]}",
+      "edit_errors": [
+        "add_belt: rejected \u2014 belt b_gear[0]: out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.534,
+        "green_science_rate": 0.0,
+        "materials": 74.0,
+        "cells": 26,
+        "machine_count": 4,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assem\", \"type\": \"assembling-machine-3\", \"x\": 10, \"y\": 12, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 6, \"y\": 12, \"direction\": \"north\", \"recipe\": \"stone\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace rand_m4: recipe 'stone' runs on 'miner', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity<Carbonium-Fusion-Reactor>\", \"id\": \"reac\", \"type\": \"carbonium-fusion-reactor\", \"x\": 8, \"y\": 0, \"kind\": \"machine\"}, {\"op\": \"add_entity<Assembling-Machine-2>\", \"id\": \"asm2\", \"type\": \"assembling-machine-2\", \"x\": 8, \"y\": 12, \"direction\": \"south\", \"recipe\": \"steel-furnace\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"new_fuel\", \"type\": \"electric-furnace\", \"x\": 16, \"y\": 8, \"recipe\": \"steel-plate\", \"target_resource\": \"coal\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \" Rich-Machine\", \"x\": 12, \"y\": 4, \"direction\": \"north\", \"recipe\": \"inserter\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_gear: unknown type ' Rich-Machine'"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m1\", \"type\": \"electric-mining-drill\", \"x\": 0, \"y\": 10, \"target_resource\": \"iron-ore\"}, {\"op\": \"add_entity\", \"id\": \"m2\", \"type\": \"electric-mining-drill\", \"x\": 0, \"y\": 12, \"target_resource\": \"copper-ore\"}, {\"op\": \"add_entity\", \"id\": \"m3\", \"type\": \"electric-mining-drill\", \"x\": 8, \"y\": 0, \"target_resource\": \"coal\"}, {\"op\": \"add_entity\", \"id\": \"m4\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 1, \"recipe\": \"iron-plate\"}, {\"op\": \"add_entity\", \"id\": \"m5\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 2, \"recipe\": \"copper-plate\"}, {\"op\": \"add_entity\", \"id\": \"m6\", \"type\": \"steel-furnace\", \"x\": 12, \"y\": 2, \"recipe\": \"stone\"}, {\"op\": \"add_entity\", \"id\": \"m7\", \"type\": \"steel-furnace\", \"x\": 14, \"y\": 0, \"recipe\": \"iron-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_ore\", \"item\": \"iron-ore\", \"tiles\": [[1,1,\"east\"],[2,1 Papa],[3,1,Papa],[4,1,Papa],[5,1,Papa],[6,1,Papa],[7,1,Papa],[8,1,Papa],[9,1,Papa],[10,1,Papa],[11,1,Papa],[12,1,Papa],[13,1,Papa],[14,1,Papa],[15,1,Papa],[16,1,Papa]]},\tinst(\"Papa\") {\"op\": \"add_belt\", \"id\": \"b_copper\", \"item\": \"copper-plate\", \"tiles\": [[1,1,\"east\"],[2,1,Papa],[3,1,Papa],[4,1,Papa],[5,1,Papa],[6,1,Papa],[7,1,Papa],[8,1,Papa],[9,1,Papa],[10,1,Papa],[\u4e0d\u7231,1,Papa],[12,1,Papa],[13,1,Papa],[14,1,Papa],[15,1,Papa],[16,1,Papa]]},\t{\"op\": \"add_belt\", \"id\": \"b_stone\", \"item\": \"stone\", \"tiles\": [[1,1,\"east\"],[2,1,Papa],[3,1,Papa],[4,1,Papa],[5,1,Papa],[6,1,Papa],[7,1,Papa],[8,1,Papa],[9,1,Papa],[10,1,Papa],[11,1,Papa],[12,1,Papa],[13,1,Papa],[14,1,Papa],[15,1,Papa],[16,1,Papa]]},\t{\"op\": \"add_inserter\", \"id\": \"i_ore\", \"x\": 1, \"y\": 1, \"direction\": \"\u986f\u793a\"},\t{\"op\": \"add_inserter\", \"id\": \"i_copper\", \"x\": 1, \"y\": 2, \"direction\": \"\u986f\u793a\"},\t{\"op\": \"add_inserter\", \"id\": \"i_stone\", \"x\": 1, \"y\": 3, \"direction\": \"\u986f\u793a\"},\t{\"op\": \"add_entity\", \"id\": \"e1\", \"type\": \"assembling-machine-1\", \"x\": 8, \"y\": 1, \"recipe\": \"electronic-circuit\"},\t{\"op\": \"add_entity\", \"id\": \"e2\", \"type\": \"assembling-machine-1\", \"x\": 8, \"y\": 2, \"recipe\": \"electronic-circuit\"},\t{\"op\": \"add_entity\", \"id\": \"e3\", \"type\": \"assembling-machine-1\", \"x\": 8, \"y\": 3, \"recipe\": \"electronic-circuit\"},\t{\"op\": \"add_entity\", \"id\":\u9555\", \"type\": \"fast-inserter\", \"x\": 1, \"y\": 4, \"direction\": \"east\"},\t{\"op\": \"add_entity\", \"id\": \"\u95552\", \"type\": \"fast-inserter\", \"x\": 1, \"y\": 5, \"direction\": \"east\"},\t{\"op\": \"add_entity\", \"id\": \"\u95553\", \"type\": \"fast-inserter\", \"x\": 1, \"y\": 6, \"direction\": \"east\"},\t{\"op\": \"add_entity\", \"id\": \"\u95554\", \"type\": \"fast-inserter\", \"x\": 1, \"y\": 7, \"direction\": \"east\"},\t{\"op\": \"add_entity\", \"id\": \"\u95555\", \"type\":\u754f\u60e7\", \"x\": 1, \"y\": 8, \"direction\": \"east\"},\t{\"op\": \"add_entity\", \"id\": \"\u95556\", dark=\"true\", \"x\": 1, \"y\": 9, \"direction\": \"east\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n```",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m1\", \"type\": \"electric-mining-drill\", \"x\": 13, \"y\": 10, \"target_resource\": \"copper-ore\"}, {\"op\": \"add_entity\", \"id\": \"m2\", \"type\": \"electric-mining-drill\", \"x\": 8, \"y\": 13, \"target_resource\": \"iron-ore\"}, {\"op\": \"add_entity\", \"id\": \"f1\", \"type\": \"steel-furnace\", \"x\": 15, \"y\": 10, \"recipe\": \"copper-plate\"}, {\"op\": \"add_entity\", \"id\": \"f2\", \"type\": \"steel-furnace\", \"x\": 5, \"y\": 15, \"recipe\": \"iron-plate\"}, {\"op\": \"add_entity\", \"id\": \"a1\", \"type\": \"assembling-machine-1\", \"x\": 10, \"ivicrm\": \"steel-furnace\", \"recipe\": \"electronic-circuit\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"ma\", \"type\": \"assembling-machine-3\", \"x\": 13, \"y\": 13, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"asmb\", \"type\": \"assembling-machine-2\", \"x\": 15, \"y\": 13, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine asmb: footprint out of bounds at (16, 13)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 15, \"y\": 13, \"direction\": \"north\", \"recipe\": \"stone-brick\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine rand_m4: footprint out of bounds at (16, 13)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"gsp\", \"type\": \"logistic-science-pack\", \"x\": 13, \"y\": 10}}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 3,
+      "n_edits_attempted": 4,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"gears\", \"type\": \"assembling-machine-1\", \"x\": 10, \"y\": 4, \"recipe\": \"iron-gear-wheel\"}, {\"op\": \"add_inserter\", \"id\": \"i_gears_in\", \"x\": 9, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"i_gears_out\", \"x\": 14, \"y\": 5, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_gears\", \"item\": \"iron-gear-wheel\", \"tiles\": [[15,5,\"east\"],[16,5,\"east\"]]}]}",
+      "edit_errors": [
+        "add_belt: rejected \u2014 belt b_gears[1]: out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"electric-furnace\", \"x\": 1\u677e\u5f1b",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.096,
+        "green_science_rate": 0,
+        "materials": 6.0,
+        "cells": 4,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"ma2\", \"type\": \"assembling-machine-2\", \"x\": 7, \"y\": 11}, {\"op\": \"add_inserter\", \"id\": \"i_science\", \"x\": 6, \"y\": 11, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_science\", \"item\": \"logistic-science-pack\", \"tiles\": [[8,11,\"east\"],[9,11,\"east\"],[10,11,\"east\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler ma2: missing recipe"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 5,
+      "reward": {
+        "composite": -0.033,
+        "green_science_rate": 0,
+        "materials": 3.0,
+        "cells": 3,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 4}, {\"op\": \"add_entity\", \"id\": \"assembling_machine_2\", \"type\": \"assembling-machine-2\", \"x\": 13, \"y\": 4}, {\"op\": \"add_entity\", \"id\": \"assembling_machine_1\", \"type\": \"assembling-machine-1\", \"x\": 16, \"y\": 4}, {\"op\": \"add_entity\", \"id\": \"storage_container\", \"type\": \"storage-container\", \"x\": 12, \"y\": 4, \"capacity\": 200, \"item_type\": \"logistic-science-pack\"}, {\"op\": \"add_belt\", \"id\": \"b_logistic_science_pack\", \"item\": \"logistic-science-pack\", \"tiles\": [[13,4,\"east\"],[14,4,\"east\"],[15,4,\"east\"]]}] }",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smeltery: missing recipe",
+        "add_entity: rejected \u2014 assembler assembling_machine_2: missing recipe",
+        "add_entity: rejected \u2014 machine assembling_machine_1: footprint out of bounds at (16, 4)",
+        "add_entity: rejected \u2014 machine storage_container: unknown type 'storage-container'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.157,
+        "green_science_rate": 0,
+        "materials": 17.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"sm\", \"type\": \"steel-furnace\", \"x\": 8, \"y\": 13, \"recipe\": \"steel-plate\"}, {\"op\": \"add_entity\", \"id\": \"a\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 13, \"recipe\": \"electronic-circuit\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace sm: unknown recipe 'steel-plate'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.159,
+        "green_science_rate": 0.0,
+        "materials": 19.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_science\", \"type\": \"assembling-machine-2\", \"x\": 5, \"y\": 5, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.157,
+        "green_science_rate": 0.0,
+        "materials": 17.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"ma\", \"type\": \"assembling-machine-1\", \"x\": 13, \"y\": 12, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"electric-mining-drill\", \"x\": 0, \"y\": 4, \"target_resource\": \"copper Carousel\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"steel-furnace integer-only\", \"x\": 11, \"y\": 4, \"recipe\": \"copper-plate\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m6\", \"type\": \"assembling-machine-2\", \"x\": 13, \"y\": 11, \"direction\": \"north\", \"recipe\": \"steel-plate\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m7\", \"type\": \"steel-furnace integer-only\", \"x\": 6, \"y\": 10, \"recipe\":\u512a\ufffd,\"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m8\", \"type\": \"assembling-machine-2\", \"x\": 9, \"y\": 11, \"direction\": \"north\", \"recipe\": \"steel-plate\", stylistic=\"false\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m9\", \"type\": \"electric-furnace\", \"x\": 10, \"y\": 11, \"recipe\": \"copper-plate\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m10\", \"type\": \"steel-furnace integer-only\", \"x\": 6, \"y\": 12, \"recipe\": \"steel-plate\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m11\", \"type\": \"assembling-machine-2\", \"x\": 9, \"y\": 12, \"direction\": \"north\", \"recipe\": \"steel-plate\", \"target_resource\": null}, {\"op\": \"add_entity\", \"id\": \"rand_m12\", \"type\": \"electric-furnace\", \"x\": 10, \"y\": 12, \"recipe\": \" Norman\", \"target_resource\": null}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"new_assembler\", \"type\": \"assembling-machine-3\", \"x\": 10, \"y\": 4, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine new_assembler: overlaps entity 'rand_m3' at (10, 4)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m1\", \"type\": \"assembling-machine-1\", \".defaults\": true}, {\"op\": \"add_entity\", \"id\": \"m2\", \"type\": \"electric-furnace\", \"x\": 10, \"y\": 10, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_entity\", \"id\": \"m3\", \"type\": \"assembling-machine-1\", \"x\": 12, \"y\": 0, \"recipe\": \"copper-gear-wheel\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"g1\", \"type\": \"assembling-machine-2\", \"x\": 12, \"y\": 4, \"recipe\": \"logistic-science-pack\", \"target_resource\": \"steel-plate\"}, {\"op\": \"add_belt\", \"id\": \"b_log\", \"item\": \"logistic-science-pack\", \"tiles\": [[16,4,\"east\"],[17,4ionate\", \"north\"],[17,3,\"north\"],[17,2,\"north\"],[17,1,\"north\"],[16,0,\"north\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler g1: target_resource only valid for miners"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.063,
+        "green_science_rate": 0,
+        "materials": 3.0,
+        "cells": 1,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"as\", \"type\": \"assembling-machine-3\", \"x\": 12, \"y\": 4}, {\"op\": \"add_inserter\", \"id\": \"i_as\", \"x\": 11, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_as\", \"item\": \"electronic-circuit\", \"tiles\": [[16,5,\"east\"],[17,5,\"east\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler as: missing recipe",
+        "add_belt: rejected \u2014 belt b_as[0]: out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.172,
+        "green_science_rate": 0,
+        "materials": 32.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"ma3\", \"type\": \"assembling-machine-3\", \"x\": 12, \"y\": 4, \"recipe\": \"iron-gear-wheel\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assembler\", \"type\": \"assembling-machine-2\", Exhibit: \"assembling-machine-2.png\"}, {\"op\": \"add_entity\", \"id\": \"inserter\", \"type\": \"stack-inserter\", \"x\": 14, \"y\": 5, \"direction\": \"east\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"f2\", \"type\": \"steel-furnace\", \"x\": 5, \"y\": 4, \"recipe\": \"steel-plate\"}, {\"op\": \" Notify user about insufficient resources\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"f2\", \"type\": \"steel-furnace\", \"x\": 12, \"y\": 4, \"recipe\": \"stone\"}, {\"op\": \"add_inserter\", \"id\": \"i_stone\", \"x\": 1\u2f0b, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_inserter\", \"id\": \"i_fuel\", \"x\": 11, \"y\": 4, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_stone\", \"item\": \"stone\", \"tiles\": [[16,4,\"east\"],[17,4,\"east\"]]}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smelter\", \"type\": \"steel-furnace\", \"x\": 5, \"y\": 13, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smelter: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m4\", \"type\": \"electric-furnace\", \"x\": 14, \"y\": 3, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine m4: footprint out of bounds at (16, 3)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 7, \"y\": 13, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace rand_m4: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smelter\", \"type\": \"steel-furnace\", \"x\": 15, \"y\": 8, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine smelter: footprint out of bounds at (16, 8)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id_PROCID\", \"type\": \"steel-furnace\", \"x\": 9, \"y\": 4, \"recipe\": \"steel-plate\", \"target_resource\": \" while (true)\" }]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am3\", \"type\": \"assembling-machine-3\", \"x\": 8, \"y\": 8, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 3,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.244,
+        "green_science_rate": 0,
+        "materials": 24.0,
+        "cells": 12,
+        "machine_count": 2,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [{\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-2\", \"x\": 11, \"y\": 13, \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_inserter\", \"id\": \"i_am2\", \"x\": 10, \"y\": 13, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_am2\", \"item\": \"electronic-circuit\", \"tiles\": [[11,12,\"east\"],[12,12,\"east\"]]}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_science\", \"type\": \"assembling-machine-2\", \"x\": 12, \"y\": 15, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.159,
+        "green_science_rate": 0,
+        "materials": 19.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am2\", \"type\": \"assembling-machine-2\", \"x\": 12, \"y\": 4, \"recipe\": \"electronic-circuit\"}, {\"op\": \"add_entity\", \"id\": \"am3\", \"type\": \"assembling-machine-3\", \"x\": 15, \"y\": 4, \"recipe\": \"electric-furnace\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine am3: footprint out of bounds at (16, 4)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smeltery\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 10, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null}, {\"op\": \"add_inserter\", \"id\": \"i_science\", \"x\": 9, \"y\": 10, \"direction\": \"east\"}, {\"op\": \"add_belt\", \"id\": \"b_science\", \"item\": \"logistic-science-pack\", \"tiles\": [[10,10,\"east\"],[11,10,\"east\"]]}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smeltery: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m3\", \"type\": \"electric-mining-drill\", \"x\": 10, \"y\": 15, \"target_resource\": \"stone\"}, {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"electric-mining-drill\", \"x\": \u5be6\u73fe \"stone\", \"y\": 14, \"target_resource\": \"stone\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"electric-mining-drill\", \"x\": 11, \"y\": 15, \"target_resource\": \"stone\"}, {\"op\": \"add_entity\", \"id\": \"rand_m6\", \"type\": \"electric-mining-drill\", \"x\": 12, \"y\": 15, \"target_resource\": \"stone\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m3 lungs\", \"type\": \"steel-furnace\", \"x\": 9, \"y\": 9, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace m3 lungs: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 16, \"y\": 14, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_inserter\", \"id\": \"i_gear_out\", \"x\": 15, \"y\": 14, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_gear: footprint out of bounds at (16, 14)"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m3\", \"type\": \"steel-furnace\", \"x\":.Adam, \"y\": 10, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assem-1\", \"type\": \"assembling-machine serum\", \"x\": 10, \"y\": 13, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine assem-1: unknown type 'assembling-machine serum'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.159,
+        "green_science_rate": 0.0,
+        "materials": 19.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"f2\", \"type\": \"electric-furnace\", \"x\": 5, \"y\": 11, \"recipe\": \"coal\"}, {\"op\": \"add_entity\", \"id\": \"m1\", \"type\": \"assembling-machine-2\", \"x\": 10, \"y\": 11, \"recipe\": \"logistic-science-pack\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace f2: recipe 'coal' runs on 'miner', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 9,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assembling_machine_2\", \"type\": \"assembling-machine-2\", \"x\": 12, \"y\": 4}, {\"op\": \"add_entity\", \"id\": \"assembling_machine_3\", \"type\": \"assembling-machine-3\", \"x\": 12, \"y\": 8}, {\"op\": \"add_entity\", \"id\": \"electric_furnace\", \"type\": \"electric-furnace\", \"x\": 10, \"y\": 5}, {\"op\": \"add_entity\", \"id\": \"electric_mining_drill\", \"type\": \"electric-mining-drill\", \"x\": 0, \"y\": 0}, {\"op\": \"add_entity\", \"id\": \"electric_mining_drill\", \"type\": \"electric-mining-drill\", \"x\": 0, \"y\": 10}, {\"op\": \"add_entity\", \"id\": \"steel_furnace\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 3}, {\"op\": \"add_entity\", \"id\": \"steel_furnace\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 7}, {\"op\": \"add_entity\", \"id\": \"stone_furnace\", \"type\": \"stone-furnace\", \"x\": 10, \"y\": 2}, {\"op\": \"add_entity\", \"id\": \"stone_furnace\", \"type\": \"stone-furnace\", \"x\": 10, \"y\": 6}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler assembling_machine_2: missing recipe",
+        "add_entity: rejected \u2014 assembler assembling_machine_3: missing recipe",
+        "add_entity: rejected \u2014 furnace electric_furnace: missing recipe",
+        "add_entity: rejected \u2014 miner electric_mining_drill: missing target_resource",
+        "add_entity: rejected \u2014 miner electric_mining_drill: missing target_resource",
+        "add_entity: rejected \u2014 furnace steel_furnace: missing recipe",
+        "add_entity: rejected \u2014 furnace steel_furnace: missing recipe",
+        "add_entity: rejected \u2014 furnace stone_furnace: missing recipe",
+        "add_entity: rejected \u2014 furnace stone_furnace: missing recipe"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n```\nThis edit list is empty because the current layout already has enough resources and machines to produce `logistic-science-pack` efficiently. No additional resources are needed, and the existing machinery can handle the production requirements without requiring any upgrades or modifications.",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.063,
+        "green_science_rate": 0,
+        "materials": 3.0,
+        "cells": 1,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"am1\", \"type\": \"assembling-machine-1\", \"x\": 15, \"y\": 13, \"recipe\": \"logistic-science-pack\"}, {\"op\": \"add_inserter\", \"id\": \"i_science_in\", \"x\": 14, \"y\": 13, \"direction\": \"east\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine am1: footprint out of bounds at (16, 13)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 15, \"y\": 5, \"direction\": \"north\", \"recipe\": \"copper-cable\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id\": \"rand_m5\", \"type\": \"assembling-machine-1\", \"x\": 2, \"y\": 1, \"direction\": \"north\", \"recipe\": \"electronic-circuit\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine rand_m4: footprint out of bounds at (16, 5)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"rand_m4\", \"type\": \"steel-furnace\", \"x\": 16, \"y\": 12, \"direction\": \"north\", \"recipe\": \"coal\", \"target_resource\": null, \"kind\": \"machine\"} ]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine rand_m4: footprint out of bounds at (16, 12)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", \"x\": 14, \"y\": 10, \"recipe\": \"transport-belt\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine a_gear: footprint out of bounds at (16, 10)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m4\", \"type\": \"assembling-machine-3\", \"x\": 2, \"y\": 8, \"recipe\": \"steel-furnace\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 assembler m4: unknown recipe 'steel-furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assembler\", \"type\": \"assembling-machine-2\", \"x\": 11, \"y\": 7, \"recipe\": \"logistic-science-pack\", \"target\u1ea9ce\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"sm\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 10, \"recipe\": \"steel-plate\", \"target_resource\": \"coal\"}]}",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace sm: unknown recipe 'steel-plate'"
+      ]
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [{\"op\": \"Salvage\", \"id\": \"e1\", \"amount\": 400}, {\"op\": \"AddEntity\", \"id\": \"am\", \"type\": \"asMagicMachine\", \"x\": 14, \"y\": 7, \"recipe\": \"magic-machine\"}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"assem\", \"type\": \"assembling-machine-2\", \"x\": 14, \"y\": 13, \"recipe\": \"logistic-science-pack\"}}]",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"smelter\", \"type\": \"steel-furnace\", \"x\": 11, \"y\": 11, \"recipe\": \"stone\"}, {\"op\": \"add_belt\", \"id\": \"b_stone\", \"item\": \"stone\", \"tiles\": [[12,11,\"north\"],[13,11,\"north\"],[14,11,\"north\"],[15,11,\"north\"],[16,11,\"north\"],[17,11,\"north\"],[18,11,\"north\"],[19,11,\"north\"],[20,11,\"north\"],[21,11,\"north\"],[22,11,\"north\"],[23,11,\"north\"],[24,11,\"north\"],[25,11,\"north\"],[26,11,\"north\"],[27,11,\"north\"],[28,1\u0e44\u0e02\u0e21\u0e31\u0e19\n",
+      "edit_errors": [
+        "add_entity: rejected \u2014 furnace smelter: recipe 'stone' runs on 'miner', not 'furnace'"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ ]}\n```",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"m1\", \"type\": \"steel-furnace\", \"x\": 9, \"y\": 8, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_inserter\", \"id\": \"i1\", \"x\": 9, \"y\": 12, \"direction\": \"west\", \"type\": \"inserter\", \"kind\": \"inserter\"}, {\"op\": \"add_belt\", \"id\": \"b1\", \"item\": \"logistic-science-pack\", \"tiles.DrawLine(10,8,10,12,[\"east\",\"east\",\"east\"]), [{\"op\": \"add_entity\", \"id\": \"m2\", \"type\": \"steel-furnace\", \"x\": 10, \"y\": 9, \"direction\": \"north\", \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_inserter\", \"id\": \"i2\", \"x\": 10, \"y\": 13, \"direction\": \"west\", \"type\": \"inserter\", \"kind\": \"inserter\"}]}]",
+      "edit_errors": [
+        "add_entity: rejected \u2014 machine m1: overlaps entity 'rand_m1' at (9, 8)"
+      ]
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ ]}\n",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [{}]}",
+      "edit_errors": []
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      },
+      "completion": "{\"edits\": [ {\"op\": \"add_entity\", \"id\": \"g1\", \"type\": \"assembling-machine-1\", \"x\": 7, \"y\": _REDACTED, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}, {\"op\": \"add_entity\", \"id Website link \"g2\", \"type\": \"steel-furnace\", \"x\": 8, \"y\": _REhigher than 8_, \"recipe\": \"logistic-science-pack\", \"target_resource\": null, \"kind\": \"machine\"}]}",
+      "edit_errors": []
+    }
+  ]
+}

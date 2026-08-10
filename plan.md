@@ -247,7 +247,7 @@ Pipeline:
    - **Belt node**: total supply = sum of inserter throughputs feeding onto the belt. Cap at belt capacity (yellow belt = 15 items/sec from factoriolab). If total supply exceeds capacity, throttle producer inserters proportionally by upstream position (upstream inserters succeed first).
    - **Belt → consumer inserters (FCFS by position)**: sort consumer inserters by attachment position along the belt direction (upstream first). Iterate in order, giving each `min(consumer.demand_at_this_inserter, remaining_flow)`. Downstream consumers starve if upstream ones consume all available. Matches real-Factorio inserter behavior on a shared belt.
 6. Green science reward = sum of output rates of all `green_science` (logistic-science-pack) assemblers.
-7. Compute `materials_used` (using real factoriolab construction recipes), `total_cells_occupied` (machines + belt tiles + inserters), `machine_count` (all placed entities including inserters).
+7. Compute `materials_used` (using real factoriolab construction recipes), `total_cells_occupied` (machines + belt tiles + inserters), `machine_count` (miners + furnaces + assemblers **only**; inserters are already counted via `total_cells_occupied`).
 
 **Why this is still rate-based, not tick-based:** for a DAG topology the steady-state flow through each belt is fully determined by supply, capacity, and FCFS allocation — no simulation of item movement in time is needed. Cycles (which would require iterative fixpoint solving) are forbidden by validation.
 
@@ -317,12 +317,78 @@ This closes the loop on Morgan's explicit requirement: our layouts translate bac
 
 ## Task 3 — GRPO Iterative Improvement
 
+### Baseline eval finding (2026-08-08) — motivates Stage 0 + Stage 1
+
+First baseline run of `Qwen2.5-Coder-1.5B-Instruct` on 20 val layouts × 5 samples (`results/baseline_eval.json`):
+
+- Parse fail rate: **27%**
+- Of parse-ok completions: **most output empty edit list `[]`** — only ~15 of 73 attempted any edits
+- Of attempted edits: dominant failure = wrong recipe on wrong machine (e.g., `copper-cable` on furnace)
+- Green science produced: **0 across all 100 episodes**
+- Mean reward: -0.41
+
+Consequence for GRPO: with rewards near-constant per group (-1 or 0), advantages ≈ 0 and gradient ≈ 0. Straight GRPO on this baseline trains nothing. Fix: two-stage warmup (few-shot prompt + SFT) before GRPO.
+
+Model choice: **staying on 1.5B**. No paid Colab, so no A100 for 7B. Also, small model + small SFT set is a well-matched regime — 1.5B learns narrow schema-following patterns from 20–30 examples quickly. Matches DeepSeekMath's use of 1B-class baselines.
+
 ### Files
-- `training/data.py` — dataset of prompts (60 train + 20 val layouts)
-- `training/reward_wrapper.py` — TRL-compatible reward function calling our simulator
-- `training/train_grpo.py` — training entry point
-- `training/evaluate.py` — checkpoint evaluation
-- `notebooks/task3_grpo_training.ipynb` — Colab-runnable training + eval + plots
+- `training/data.py` — dataset of prompts (60 train + 20 val layouts) ✓
+- `training/reward_wrapper.py` — TRL-compatible reward function calling our simulator ✓
+- `training/train_grpo.py` — GRPO training entry point ✓
+- `training/evaluate.py` — checkpoint evaluation ✓
+- `notebooks/task3_grpo_training.ipynb` — Colab-runnable training + eval + plots ✓
+- **New: `training/sft_seeds.py`** — hand-crafted good layouts + starting/edit-list pair generation
+- **New: `training/train_sft.py`** — LoRA SFT warmup on rejection-sampled + seed data
+- **Modified: `harness/prompt_builder.py`** — add few-shot examples + assembler-vs-furnace hint
+
+### Stages (execution order)
+
+**Stage 0 — Prompt fixes (no training).**
+- Add 2–3 few-shot `(layout, good edits, reward)` examples inside the system prompt built by `prompt_builder.build_chat_messages`.
+- Add one-line explicit recipe → machine hint ("assembler for gears/circuits/belts/inserters/science; furnace for plates only"). Kills top schema error observed in baseline eval.
+
+**Stage 1 — SFT warmup (required, not optional).**
+- Assemble ~30 good layouts. **Primary source: expert Factorio blueprints already decoded during Task 2** (real designs, higher quality than anything hand-invented, protects against simulator-quirk overfitting). Supplement with a handful of hand-written layouts for coverage gaps (e.g., minimal plate-only chains for easy signal). Stored in `training/sft_seeds.py`.
+- Derive `(starting_layout, correct_edit_list)` pairs by stripping subsets of entities from each good layout (data augmentation — one good layout → multiple training pairs, target ~60–90 pairs total from 30 layouts).
+- For each of the 60 training layouts: sample K=16 completions from the raw baseline. Keep best-reward if positive; otherwise fall back to a matched synthetic seed.
+- LoRA SFT on the resulting `(prompt → edits)` pairs. Rank 16, LR 2e-4, 3–5 epochs. Output: **π_1** (SFT adapter, saved to `./ckpts/sft/`).
+
+**Stage 2 — GRPO from π_1.**
+- Load π_1 as the starting adapter.
+- TRL `GRPOTrainer`, G=8, β=0.04, LR 5e-5, ~200 optimizer steps, checkpoint every 50 steps.
+- FLE spot-check on 5 rollouts every 50 steps; log sim-vs-FLE Pearson r.
+- Checkpoints saved to `./ckpts/grpo/checkpoint-{step}/`.
+- Output: **π_2, π_3, π_final** (GRPO checkpoints).
+
+**Stage 3 — Evaluation.** Existing `training/evaluate.py` covers this. Runs base (π_0), SFT (π_1), each GRPO checkpoint against 20 val layouts × 4 samples.
+
+### Val split protection (explicit)
+
+The 20 val layouts are held out from the 60-layout training pool and are **never** used for:
+- Reward-weight tuning (done on training split only, per plan.md line 267).
+- SFT seed derivation (seeds come from expert blueprints + hand-crafted, not from val).
+- Rejection sampling in Stage 1 (done on the 60 train layouts).
+- GRPO training in Stage 2 (uses same 60 train layouts).
+- Hyperparameter selection.
+
+Val is touched exactly once, at the end, to produce Stage 3 metrics. This protects the reported improvement from being biased by any form of train/val leakage.
+
+### Checkpoint naming convention
+
+| Name | What it is |
+|---|---|
+| `policy_0` | Raw `Qwen2.5-Coder-1.5B-Instruct`, no adapter |
+| `policy_1` | SFT adapter after Stage 1 (`./ckpts/sft/`) |
+| `policy_2` | GRPO checkpoint at step 50 |
+| `policy_3` | GRPO checkpoint at step 100 |
+| `policy_4` | GRPO checkpoint at step 150 |
+| `policy_final` | GRPO checkpoint at step 200 |
+
+Making the SFT step its own numbered checkpoint (rather than folding it into the "baseline") lets the eval table show the SFT contribution separately from the GRPO contribution.
+
+### Config logging (for writeup reproducibility)
+
+Every training run writes a `config.json` next to its adapter output containing: base model id, LoRA rank/alpha/dropout, LR, batch size, optimizer steps, seed, git commit hash, and any dataset-generation params. Writeup reads from these files rather than relying on memory of what was set.
 
 ### Theory reference — DeepSeekMath GRPO (arXiv 2402.03300, §4.1)
 
@@ -623,6 +689,14 @@ Because the DAG is accurate under held assumptions and cheap to evaluate, the pl
 Without this fix any rate measurement on a CPU-limited container reads ~4× low.
 
 ---
+
+## Simulator bug fixes (2026-08-09)
+
+Two correctness fixes applied before Task 3 evaluation:
+
+1. **`Layout.machine_count()` now returns machines only.** Previously returned `len(machines) + len(inserters)`, which caused γ·(machines+inserters) to over-penalize every valid layout by ~0.75 (γ=0.05 × ~15 inserters in a realistic chain). Inserters are still counted via the `cells` term (β=0.01 per cell), so they aren't free — they're just not double-counted. Composite reward interpretation is now aligned with plan.md §Reward reporting ("mean machine count" = miners + furnaces + assemblers). `Layout.entity_count()` added for diagnostics if we need the old sum. Baseline eval numbers gathered before this fix use the buggy formula; re-eval will happen once we have SFT + GRPO checkpoints to score, so the comparison stays internally consistent (all checkpoints scored under the same reward).
+
+2. **Green-science rate query hardened.** `simulator.py` now requires `_machine_kind(m.type) == "assembler"` in addition to `m.recipe == GREEN_SCIENCE_ITEM` when summing green-science output. Prior code assumed only assemblers could have that recipe; a schema regression or a validation bypass would have made non-assemblers count as green-science producers. One-line defensive fix.
 
 ## Hybrid sim/FLE strategy (2026-08-08)
 

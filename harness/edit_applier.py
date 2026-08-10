@@ -54,6 +54,7 @@ def _apply_one(layout: Layout, edit: Edit) -> tuple[Layout, str | None]:
             return layout, f"add_entity {edit.id}: id already exists"
         candidate.machines.append(Machine(
             id=edit.id, type=edit.type, x=edit.x, y=edit.y,
+            direction=edit.direction or "north",
             recipe=edit.recipe, target_resource=edit.target_resource,
         ))
     elif isinstance(edit, AddInserter):

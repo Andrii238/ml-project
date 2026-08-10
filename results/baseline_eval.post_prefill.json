@@ -1,0 +1,1641 @@
+{
+  "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "samples_per_layout": 5,
+  "n_layouts": 20,
+  "summary": {
+    "n_episodes": 100,
+    "mean_reward": -0.44500999999999996,
+    "mean_green_science": 0.0,
+    "invalid_json_rate": 0.26,
+    "valid_edit_rate": 0.2988505747126437
+  },
+  "per_layout_rewards": [
+    [
+      -0.126,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -0.927,
+      -0.7050000000000001,
+      -0.7050000000000001,
+      -0.7050000000000001,
+      -0.7050000000000001
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      -0.128,
+      -0.022,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      -0.172,
+      0.0
+    ],
+    [
+      -0.36200000000000004,
+      -0.36200000000000004,
+      -0.36200000000000004,
+      -0.5840000000000001,
+      -0.521
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      -0.10600000000000001,
+      0.0,
+      0.0
+    ],
+    [
+      -0.42400000000000004,
+      -0.42400000000000004,
+      -0.581,
+      -0.42400000000000004,
+      -0.42400000000000004
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      -0.033,
+      -0.172,
+      0.0,
+      -0.022,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      -0.157,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    [
+      0.0,
+      0.0,
+      -0.08499999999999999,
+      -0.10600000000000001,
+      -0.157
+    ],
+    [
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
+    ]
+  ],
+  "episodes": [
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 4,
+      "reward": {
+        "composite": -0.126,
+        "green_science_rate": 0,
+        "materials": 6.0,
+        "cells": 2,
+        "machine_count": 2,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.927,
+        "green_science_rate": 0.0,
+        "materials": 127.0,
+        "cells": 40,
+        "machine_count": 8,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.7050000000000001,
+        "green_science_rate": 0,
+        "materials": 105.0,
+        "cells": 30,
+        "machine_count": 6,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'copper-cable' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'",
+          "furnace rand_m3: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.128,
+        "green_science_rate": 0,
+        "materials": 18.0,
+        "cells": 6,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.022,
+        "green_science_rate": 0,
+        "materials": 2.0,
+        "cells": 2,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.172,
+        "green_science_rate": 0.0,
+        "materials": 32.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.36200000000000004,
+        "green_science_rate": 0,
+        "materials": 42.0,
+        "cells": 17,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.5840000000000001,
+        "green_science_rate": 0.0,
+        "materials": 64.0,
+        "cells": 27,
+        "machine_count": 5,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 4,
+      "reward": {
+        "composite": -0.521,
+        "green_science_rate": 0.0,
+        "materials": 61.0,
+        "cells": 26,
+        "machine_count": 4,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m2: recipe 'copper-cable' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.10600000000000001,
+        "green_science_rate": 0,
+        "materials": 16.0,
+        "cells": 4,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.581,
+        "green_science_rate": 0,
+        "materials": 71.0,
+        "cells": 31,
+        "machine_count": 4,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.42400000000000004,
+        "green_science_rate": 0,
+        "materials": 54.0,
+        "cells": 22,
+        "machine_count": 3,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.033,
+        "green_science_rate": 0,
+        "materials": 3.0,
+        "cells": 3,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.172,
+        "green_science_rate": 0.0,
+        "materials": 32.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 2,
+      "reward": {
+        "composite": -0.022,
+        "green_science_rate": 0,
+        "materials": 2.0,
+        "cells": 2,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'",
+          "furnace rand_m2: recipe 'inserter' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 4,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.157,
+        "green_science_rate": 0.0,
+        "materials": 17.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'transport-belt' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": 0.0,
+        "green_science_rate": 0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 2,
+      "n_edits_attempted": 3,
+      "reward": {
+        "composite": -0.08499999999999999,
+        "green_science_rate": 0,
+        "materials": 5.0,
+        "cells": 3,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.10600000000000001,
+        "green_science_rate": 0,
+        "materials": 16.0,
+        "cells": 4,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 1,
+      "n_edits_attempted": 1,
+      "reward": {
+        "composite": -0.157,
+        "green_science_rate": 0,
+        "materials": 17.0,
+        "cells": 9,
+        "machine_count": 1,
+        "valid": true,
+        "sim_errors": []
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": false,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    },
+    {
+      "parse_ok": true,
+      "n_edits_applied": 0,
+      "n_edits_attempted": 0,
+      "reward": {
+        "composite": -1.0,
+        "green_science_rate": 0.0,
+        "materials": 0.0,
+        "cells": 0,
+        "machine_count": 0,
+        "valid": false,
+        "sim_errors": [
+          "furnace rand_m1: recipe 'logistic-science-pack' runs on 'assembler', not 'furnace'"
+        ]
+      }
+    }
+  ]
+}

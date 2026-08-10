@@ -454,7 +454,8 @@ def simulate(layout: Layout, *, implicit_sinks: set[str] | None = None) -> SimRe
             break
 
     gs_rate = sum(
-        machine_rate[m.id] for m in layout.machines if m.recipe == GREEN_SCIENCE_ITEM
+        machine_rate[m.id] for m in layout.machines
+        if _machine_kind(m.type) == "assembler" and m.recipe == GREEN_SCIENCE_ITEM
     )
 
     return SimResult(
