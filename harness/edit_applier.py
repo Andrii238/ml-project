@@ -1,111 +1,162 @@
-"""Apply an EditList to a Layout, one edit at a time.
+"""Apply a list of typed edits to a Layout.
 
-Each edit is validated in isolation before being applied. A failing edit is
-skipped (with an error string recorded) but subsequent edits still run against
-the layout as it stands. This matches plan.md §Edit schema:
+Each edit is applied in isolation:
+- If the edit would produce an invalid layout (out-of-bounds, ID collision,
+  overlap not covered by the perpendicular-crossing rule, etc.), the edit is
+  rejected and the layout is left unchanged for that step.
+- Rejections are collected in `errors`; successful edits are counted.
 
-    "Each edit is validated independently. On failure, that specific edit is
-     rejected with a clear error string; other edits in the list still apply."
+Rules enforced per edit:
+- `place_chest`: id unique, tile in bounds and unoccupied.
+- `place_assembler`: id unique, 3x3 footprint in bounds and non-overlapping.
+- `place_conveyor`: id unique, tile in bounds. Overlap allowed only if the
+  existing occupant is exactly one conveyor with a perpendicular direction.
+- `remove_entity`: id must reference an existing chest / assembler / conveyor.
 
-Validation strategy: build a candidate layout, run `Layout.validate_layout()`,
-and roll back to the previous state if the result is invalid. This piggybacks on
-the same rules the simulator uses.
+The applier does NOT enforce layout-level rules like "exactly one chest per
+kind" — those are surfaced by `layout.validate_layout()` at reward time.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from mini_factorio.layout import Belt, BeltTile, Inserter, Layout, Machine
+from mini_factorio.entities import ASSEMBLERS, is_perpendicular
+from mini_factorio.layout import (
+    Assembler,
+    Chest,
+    Conveyor,
+    Layout,
+)
 
 from .edit_schema import (
-    AddBelt,
-    AddEntity,
-    AddInserter,
     Edit,
-    EditList,
-    ExtendBelt,
-    RemoveBelt,
+    PlaceAssembler,
+    PlaceChest,
+    PlaceConveyor,
     RemoveEntity,
 )
 
 
 @dataclass
 class ApplyResult:
-    layout: Layout
-    errors: list[str]  # per-edit error strings; empty on the ones that applied cleanly
-    n_applied: int
+    layout: Layout                                       # final state (mutated copy)
+    applied: int = 0                                     # number of successful edits
+    errors: list[str] = field(default_factory=list)     # per-edit error strings
 
 
-def _clone(layout: Layout) -> Layout:
-    return Layout.model_validate(layout.model_dump())
+# --------------------------------------------------------------- helpers
+
+def _all_ids(lay: Layout) -> set[str]:
+    ids: set[str] = set()
+    for c in lay.chests:
+        ids.add(c.id)
+    for a in lay.assemblers:
+        ids.add(a.id)
+    for cv in lay.conveyors:
+        ids.add(cv.id)
+    return ids
 
 
-def _validate_diff(before: Layout, after: Layout) -> str | None:
-    """Return the first validation error introduced by the change, or None."""
-    before_errs = set(before.validate_layout())
-    after_errs = [e for e in after.validate_layout() if e not in before_errs]
-    return after_errs[0] if after_errs else None
+def _in_bounds(lay: Layout, x: int, y: int) -> bool:
+    return lay.in_bounds(x, y)
 
 
-def _apply_one(layout: Layout, edit: Edit) -> tuple[Layout, str | None]:
-    candidate = _clone(layout)
-    if isinstance(edit, AddEntity):
-        if any(m.id == edit.id for m in candidate.machines):
-            return layout, f"add_entity {edit.id}: id already exists"
-        candidate.machines.append(Machine(
-            id=edit.id, type=edit.type, x=edit.x, y=edit.y,
-            direction=edit.direction or "north",
-            recipe=edit.recipe, target_resource=edit.target_resource,
-        ))
-    elif isinstance(edit, AddInserter):
-        if any(i.id == edit.id for i in candidate.inserters):
-            return layout, f"add_inserter {edit.id}: id already exists"
-        candidate.inserters.append(Inserter(
-            id=edit.id, x=edit.x, y=edit.y, direction=edit.direction,
-        ))
-    elif isinstance(edit, AddBelt):
-        if any(b.id == edit.id for b in candidate.belts):
-            return layout, f"add_belt {edit.id}: id already exists"
-        candidate.belts.append(Belt(
-            id=edit.id, item=edit.item,
-            tiles=[BeltTile(x=t[0], y=t[1], direction=t[2]) for t in edit.tiles],
-        ))
-    elif isinstance(edit, ExtendBelt):
-        belt = next((b for b in candidate.belts if b.id == edit.id), None)
-        if belt is None:
-            return layout, f"extend_belt {edit.id}: belt not found"
-        belt.tiles.extend(
-            BeltTile(x=t[0], y=t[1], direction=t[2]) for t in edit.tiles
-        )
-    elif isinstance(edit, RemoveEntity):
-        n0 = len(candidate.machines) + len(candidate.inserters)
-        candidate.machines = [m for m in candidate.machines if m.id != edit.id]
-        candidate.inserters = [i for i in candidate.inserters if i.id != edit.id]
-        if len(candidate.machines) + len(candidate.inserters) == n0:
-            return layout, f"remove_entity {edit.id}: not found"
-    elif isinstance(edit, RemoveBelt):
-        n0 = len(candidate.belts)
-        candidate.belts = [b for b in candidate.belts if b.id != edit.id]
-        if len(candidate.belts) == n0:
-            return layout, f"remove_belt {edit.id}: not found"
-    else:  # unreachable given the discriminated union
-        return layout, f"unknown edit op: {type(edit).__name__}"
-
-    err = _validate_diff(layout, candidate)
-    if err is not None:
-        return layout, f"{edit.op}: rejected — {err}"
-    return candidate, None
+def _occupants_at(lay: Layout, tile: tuple[int, int]) -> list[tuple[str, str]]:
+    """List of (entity_id, category) currently on `tile`."""
+    out: list[tuple[str, str]] = []
+    for c in lay.chests:
+        if (c.x, c.y) == tile:
+            out.append((c.id, "chest"))
+    for a in lay.assemblers:
+        if tile in a.footprint:
+            out.append((a.id, "assembler"))
+    for cv in lay.conveyors:
+        if (cv.x, cv.y) == tile:
+            out.append((cv.id, "conveyor"))
+    return out
 
 
-def apply_edits(layout: Layout, edits: EditList) -> ApplyResult:
-    current = _clone(layout)
-    errors: list[str] = []
-    applied = 0
-    for edit in edits.edits:
-        current, err = _apply_one(current, edit)
+# --------------------------------------------------------------- per-edit
+
+def _apply_place_chest(lay: Layout, e: PlaceChest) -> str | None:
+    if e.id in _all_ids(lay):
+        return f"place_chest id {e.id!r}: duplicate"
+    if not _in_bounds(lay, e.x, e.y):
+        return f"place_chest {e.id!r}: tile ({e.x},{e.y}) out of bounds"
+    if _occupants_at(lay, (e.x, e.y)):
+        return f"place_chest {e.id!r}: tile ({e.x},{e.y}) occupied"
+    lay.chests.append(Chest(id=e.id, kind=e.kind, x=e.x, y=e.y))
+    return None
+
+
+def _apply_place_assembler(lay: Layout, e: PlaceAssembler) -> str | None:
+    if e.id in _all_ids(lay):
+        return f"place_assembler {e.id!r}: duplicate id"
+    w, h = ASSEMBLERS[e.tier].size
+    footprint = [(e.x + dx, e.y + dy) for dx in range(w) for dy in range(h)]
+    for t in footprint:
+        if not _in_bounds(lay, *t):
+            return f"place_assembler {e.id!r}: footprint tile {t} out of bounds"
+    for t in footprint:
+        if _occupants_at(lay, t):
+            return f"place_assembler {e.id!r}: tile {t} occupied"
+    lay.assemblers.append(Assembler(id=e.id, tier=e.tier, x=e.x, y=e.y))
+    return None
+
+
+def _apply_place_conveyor(lay: Layout, e: PlaceConveyor) -> str | None:
+    if e.id in _all_ids(lay):
+        return f"place_conveyor {e.id!r}: duplicate id"
+    if not _in_bounds(lay, e.x, e.y):
+        return f"place_conveyor {e.id!r}: tile ({e.x},{e.y}) out of bounds"
+    occ = _occupants_at(lay, (e.x, e.y))
+    if occ:
+        # Only allowed: exactly one existing conveyor with a perpendicular direction.
+        if len(occ) != 1 or occ[0][1] != "conveyor":
+            return (f"place_conveyor {e.id!r}: tile ({e.x},{e.y}) occupied by "
+                    f"{occ}; only a perpendicular conveyor may share a tile")
+        other = next(c for c in lay.conveyors if c.id == occ[0][0])
+        if not is_perpendicular(other.direction, e.direction):
+            return (f"place_conveyor {e.id!r}: existing conveyor {other.id!r} "
+                    f"at ({e.x},{e.y}) is direction {other.direction!r}; "
+                    f"crossing requires perpendicular, got {e.direction!r}")
+    lay.conveyors.append(Conveyor(id=e.id, tier=e.tier, x=e.x, y=e.y,
+                                    direction=e.direction))
+    return None
+
+
+def _apply_remove_entity(lay: Layout, e: RemoveEntity) -> str | None:
+    before = len(lay.chests) + len(lay.assemblers) + len(lay.conveyors)
+    lay.chests = [c for c in lay.chests if c.id != e.id]
+    lay.assemblers = [a for a in lay.assemblers if a.id != e.id]
+    lay.conveyors = [cv for cv in lay.conveyors if cv.id != e.id]
+    after = len(lay.chests) + len(lay.assemblers) + len(lay.conveyors)
+    if after == before:
+        return f"remove_entity {e.id!r}: no such entity"
+    return None
+
+
+# --------------------------------------------------------------- driver
+
+_DISPATCH = {
+    PlaceChest:     _apply_place_chest,
+    PlaceAssembler: _apply_place_assembler,
+    PlaceConveyor:  _apply_place_conveyor,
+    RemoveEntity:   _apply_remove_entity,
+}
+
+
+def apply_edits(layout: Layout, edits: list[Edit]) -> ApplyResult:
+    lay = Layout.from_dict(layout.to_dict())  # deep copy via serialization
+    result = ApplyResult(layout=lay)
+    for i, edit in enumerate(edits):
+        fn = _DISPATCH.get(type(edit))
+        if fn is None:
+            result.errors.append(f"edit[{i}]: unhandled edit type {type(edit).__name__}")
+            continue
+        err = fn(lay, edit)
         if err is None:
-            applied += 1
-            errors.append("")
+            result.applied += 1
         else:
-            errors.append(err)
-    return ApplyResult(layout=current, errors=errors, n_applied=applied)
+            result.errors.append(f"edit[{i}]: {err}")
+    return result

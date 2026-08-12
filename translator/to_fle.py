@@ -1,555 +1,347 @@
-"""Convert a Mini-Factorio Layout to Factorio-compatible outputs.
+"""Translate a simplified-env Layout into a Factorio-compatible entity list.
 
-Two output modes:
+Handles three jobs:
 
-- `layout_to_lua_commands(layout)` — a list of Lua strings suitable for RCON via
-  FLE's `instance.eval(...)`. The first command clears the surface; the rest
-  create entities via `game.surfaces[1].create_entity{...}`. Also inserts a
-  substation plus an electric-energy-interface (creative-mode infinite power
-  source) since our simulator skips the electricity subsystem — plan.md
-  §Electricity.
+1. Entity emission:
+   - Chest -> `infinity-chest` (input chests carry filters with their emitted
+     item; output chest empty).
+   - Assembler -> `assembling-machine-{tier}` with recipe `logistic-science-pack`.
+   - Conveyor -> `transport-belt` / `fast-transport-belt` /
+     `express-transport-belt` per tier.
 
-- `layout_to_blueprint_dict(layout)` — the raw dict form of Factorio's
-  blueprint schema. This is what (JSON → zlib deflate → base64 → '0' prefix)
-  becomes a shareable blueprint string. We return the dict for inspection; the
-  binary encoding is orthogonal.
+2. Same-tile perpendicular crossings -> one straight belt plus a
+   `underground-belt` (entry + exit) pair on the perpendicular axis. The
+   entry sits one tile upstream of the crossing, the exit one tile
+   downstream. If the neighboring tiles already contain conveyors of the
+   same direction, those are removed to make room for entry / exit.
 
-Factorio 2.0 conventions:
-- Directions are 16-way indices; cardinals are N=0, E=4, S=8, W=12.
-- Positions are tile-centered floats. A footprint anchored at layout top-left
-  `(x, y)` with size `(w, h)` sits at Factorio position `(x + w/2, y + h/2)`.
-- Force: `'player'` for our factory, `'neutral'` for resource ore tiles.
+3. Inserter injection between every assembler and its adjacent conveyors.
+   Real Factorio requires a 1-tile gap between machine and belt for the
+   inserter. Our sim allows them touching, so the translator shifts the
+   interface conveyor 1 tile away from the machine and cascades the shift
+   along the connected conveyor chain until it hits an obstacle or grid
+   edge (grid may grow beyond 20x20 as needed).
 
-Not covered here: actually running the commands (needs FLE + Docker), reading
-production stats back (see `get_production_lua`), or the base64/zlib encoding
-of the blueprint dict. Plan.md §FLE integration covers the run-side.
+Direction encoding used (Factorio 2.0): 0=N, 4=E, 8=S, 12=W.
+
+The result is a plain dict; wrap into a real Factorio blueprint format at
+call sites that need it.
 """
 from __future__ import annotations
 
-from mini_factorio.entities import MACHINES
-from mini_factorio.layout import DIR_DELTA, OPPOSITE, Belt, Inserter, Layout, Machine, Resource, _machine_kind
-from mini_factorio.recipes import GREEN_SCIENCE_ITEM, RECIPES
+import itertools
+from dataclasses import dataclass, field
 
-# Factorio 2.0 uses doubled direction indices (16-way for rails). Cardinal
-# entities like belts / inserters / assemblers use these values.
-FACTORIO_DIRECTION: dict[str, int] = {
+from mini_factorio.entities import (
+    ASSEMBLERS,
+    CHESTS,
+    CONVEYOR_FACTORIO_ID,
+    DIR_DELTA,
+    GREEN_SCIENCE_ITEM,
+    OPPOSITE,
+    is_perpendicular,
+)
+from mini_factorio.layout import Assembler, Chest, Conveyor, Layout
+
+
+# -------------- direction encoding --------------
+
+FACTORIO_DIRECTION = {
     "north": 0,
-    "east": 4,
+    "east":  4,
     "south": 8,
-    "west": 12,
+    "west":  12,
 }
 
 
-def _factorio_inserter_direction(our_direction: str) -> int:
-    """Factorio's `LuaInserter.direction` is the PICKUP direction, while our
-    schema uses the DROP direction. Verified live via `pickup_position`
-    read-back on a running server. So Factorio direction = opposite of ours."""
-    return FACTORIO_DIRECTION[OPPOSITE[our_direction]]
+# -------------- output structures --------------
 
-# Resource tile amount — high enough that a 10-minute FLE run never depletes.
-RESOURCE_ORE_AMOUNT = 100_000
+@dataclass
+class TranslatedEntity:
+    entity_number: int
+    name: str
+    position: dict[str, float]           # {"x": float, "y": float} — tile center
+    direction: int | None = None
+    recipe: str | None = None
+    type: str | None = None              # underground-belt: "input" | "output"
+    infinity_settings: dict | None = None
 
-# Power infra names.
-SUBSTATION = "substation"                        # 2x2, 18-tile supply radius
-POWER_SOURCE = "electric-energy-interface"       # 1x1, creative infinite power
-FACTORIO_VERSION_INT = 281479275675649           # Factorio 2.0 blueprint version int
-
-
-def _center(x: int, y: int, size: tuple[int, int]) -> tuple[float, float]:
-    w, h = size
-    return (x + w / 2, y + h / 2)
-
-
-def _lua_position(pos: tuple[float, float]) -> str:
-    return f"{{{pos[0]:g}, {pos[1]:g}}}"
-
-
-def _create_entity_lua(
-    name: str,
-    pos: tuple[float, float],
-    *,
-    direction: int | None = None,
-    recipe: str | None = None,
-    force: str = "player",
-    amount: int | None = None,
-) -> str:
-    parts = [f"name='{name}'", f"position={_lua_position(pos)}", f"force='{force}'"]
-    if direction is not None:
-        parts.append(f"direction={direction}")
-    if amount is not None:
-        parts.append(f"amount={amount}")
-    base = "game.surfaces[1].create_entity{" + ", ".join(parts) + "}"
-    if recipe is None:
-        return base
-    # Assemblers/furnaces need their recipe applied after creation.
-    return f"local e = {base}; if e then e.set_recipe('{recipe}') end"
+    def to_dict(self) -> dict:
+        d: dict = {
+            "entity_number": self.entity_number,
+            "name": self.name,
+            "position": self.position,
+        }
+        if self.direction is not None:
+            d["direction"] = self.direction
+        if self.recipe is not None:
+            d["recipe"] = self.recipe
+        if self.type is not None:
+            d["type"] = self.type
+        if self.infinity_settings is not None:
+            d["infinity_settings"] = self.infinity_settings
+        return d
 
 
-def _clear_surface_lua() -> str:
-    return (
-        "for _, e in pairs(game.surfaces[1].find_entities()) do "
-        "if e.name ~= 'character' and e.name ~= 'player' then e.destroy() end "
-        "end"
+@dataclass
+class TranslationResult:
+    entities: list[TranslatedEntity] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    grid_size: tuple[int, int] = (0, 0)   # final grid, may exceed layout.grid_size
+
+    def as_dict(self) -> dict:
+        return {
+            "entities": [e.to_dict() for e in self.entities],
+            "warnings": list(self.warnings),
+            "grid_size": list(self.grid_size),
+        }
+
+
+# -------------- helpers --------------
+
+def _tile_center(x: int, y: int, w: int = 1, h: int = 1) -> dict[str, float]:
+    return {"x": x + w / 2.0, "y": y + h / 2.0}
+
+
+def _cascade_shift(conveyors: list[Conveyor], seed_id: str,
+                    shift_delta: tuple[int, int],
+                    id_to_cv: dict[str, Conveyor],
+                    tile_to_cvs: dict[tuple[int, int], list[Conveyor]]) -> set[str]:
+    """Shift `seed_id` by `shift_delta` and cascade the shift to any conveyor
+    that was directly upstream, until no further cascade is needed.
+    Mutates `conveyors` in place (positions updated). Returns set of shifted ids."""
+    shifted: set[str] = set()
+    queue = [seed_id]
+    while queue:
+        cid = queue.pop(0)
+        if cid in shifted:
+            continue
+        cv = id_to_cv[cid]
+        old_tile = (cv.x, cv.y)
+        cv.x += shift_delta[0]
+        cv.y += shift_delta[1]
+        shifted.add(cid)
+        # Anything at cv's OLD position that fed cv previously must also shift.
+        # That was: conveyor at old_tile - DIR_DELTA[cv.direction] with downstream = old_tile.
+        # Since positions changed, find upstream by original layout:
+        upstream_tile = (old_tile[0] - DIR_DELTA[cv.direction][0],
+                          old_tile[1] - DIR_DELTA[cv.direction][1])
+        for cv_up in tile_to_cvs.get(upstream_tile, []):
+            if cv_up.id in shifted:
+                continue
+            if (cv_up.x + DIR_DELTA[cv_up.direction][0],
+                cv_up.y + DIR_DELTA[cv_up.direction][1]) == old_tile:
+                # cv_up used to feed cv. Cascade.
+                queue.append(cv_up.id)
+    return shifted
+
+
+# -------------- entity builders --------------
+
+def _translate_chest(chest: Chest, entity_number: int) -> TranslatedEntity:
+    """Chest -> infinity-chest. All chests start with no filter (empty). The
+    driver inserts items into input chests each game-second to enforce the
+    sim's per-second emission rate. The output chest simply accumulates
+    green-science delivered to it."""
+    infinity_settings: dict = {"remove_unfiltered_items": False, "filters": []}
+    return TranslatedEntity(
+        entity_number=entity_number,
+        name=CHESTS[chest.kind].factorio_id,
+        position=_tile_center(chest.x, chest.y, 1, 1),
+        infinity_settings=infinity_settings,
     )
 
 
-SUBSTATION_SPACING = 16  # tiles between substation anchors; supply radius 18, wire reach 18.
+def _translate_assembler(a: Assembler, entity_number: int) -> TranslatedEntity:
+    w, h = ASSEMBLERS[a.tier].size
+    return TranslatedEntity(
+        entity_number=entity_number,
+        name=ASSEMBLERS[a.tier].factorio_id,
+        position=_tile_center(a.x, a.y, w, h),
+        recipe=GREEN_SCIENCE_ITEM,
+    )
 
 
-def _power_grid_commands(layout: Layout) -> list[str]:
-    """Cover the layout with a grid of substations + one infinite power source.
+def _translate_belt(cv: Conveyor, entity_number: int) -> TranslatedEntity:
+    return TranslatedEntity(
+        entity_number=entity_number,
+        name=CONVEYOR_FACTORIO_ID[cv.tier],
+        position=_tile_center(cv.x, cv.y, 1, 1),
+        direction=FACTORIO_DIRECTION[cv.direction],
+    )
 
-    Substations are placed every SUBSTATION_SPACING tiles so wires reach and
-    supply areas overlap. Skips grid positions where the 2×2 footprint
-    collides with existing entities. Also tries a small perturbation search
-    to place any substation that would otherwise miss its grid slot.
-    """
-    w, h = layout.grid_size
-    occupied = set(layout.occupied_tiles().keys())
-    cmds: list[str] = []
-    placed_positions: list[tuple[int, int]] = []
 
-    def _try_place(cx: int, cy: int) -> bool:
-        tiles = {(cx + dx, cy + dy) for dx in range(2) for dy in range(2)}
-        if any(not (0 <= t[0] and 0 <= t[1]) for t in tiles):
-            return False
-        if tiles & occupied:
-            return False
-        cmds.append(_create_entity_lua(SUBSTATION, _center(cx, cy, (2, 2))))
-        occupied.update(tiles)
-        placed_positions.append((cx, cy))
-        return True
+def _translate_underground(cv: Conveyor, entity_number: int,
+                             role: str, tile: tuple[int, int]) -> TranslatedEntity:
+    """`role` in {"input", "output"}."""
+    name = CONVEYOR_FACTORIO_ID[cv.tier].replace("transport-belt", "underground-belt")
+    # yellow -> "underground-belt"; red -> "fast-underground-belt";
+    # blue -> "express-underground-belt". The replace above handles that.
+    return TranslatedEntity(
+        entity_number=entity_number,
+        name=name,
+        position=_tile_center(tile[0], tile[1], 1, 1),
+        direction=FACTORIO_DIRECTION[cv.direction],
+        type=role,
+    )
 
-    # Grid pattern covering the layout, plus a margin so edge machines are lit.
-    ys = list(range(0, h + SUBSTATION_SPACING, SUBSTATION_SPACING))
-    xs = list(range(0, w + SUBSTATION_SPACING, SUBSTATION_SPACING))
-    for cy in ys:
-        for cx in xs:
-            if _try_place(cx, cy):
+
+def _make_inserter(pos: tuple[int, int], pickup_direction: str,
+                     entity_number: int) -> TranslatedEntity:
+    """Emit a basic inserter at `pos`. `pickup_direction` is the direction from
+    which the inserter picks up items. Real Factorio uses direction = pickup
+    direction (per FLE_NOTES)."""
+    return TranslatedEntity(
+        entity_number=entity_number,
+        name="inserter",
+        position=_tile_center(pos[0], pos[1], 1, 1),
+        direction=FACTORIO_DIRECTION[pickup_direction],
+    )
+
+
+# -------------- main --------------
+
+def translate(layout: Layout) -> TranslationResult:
+    result = TranslationResult()
+    ids = itertools.count(1)
+
+    # Deep-copy the layout — we mutate conveyor positions during grid expansion.
+    lay = Layout.from_dict(layout.to_dict())
+
+    # ---- Job 2: interface conveyors -> inserters ----
+    # Rule: any conveyor whose downstream OR upstream is on a machine footprint
+    # is an interface conveyor. In real Factorio the transfer is done by an
+    # inserter, not a belt. We REPLACE the conveyor with an inserter at the
+    # same tile (no shift, no grid expansion, no chest overlap).
+    # The inserter's pickup direction points at whatever the sim treated as
+    # the source (chest, upstream belt, or the machine itself for output).
+    interface_events: list[dict] = []
+    interface_ids: set[str] = set()
+
+    for asm in lay.assemblers:
+        fp = set(asm.footprint)
+        for cv in lay.conveyors:
+            if cv.id in interface_ids:
                 continue
-            # Small perturbation search: try neighbors within +/-3 tiles.
-            for dx in range(-3, 4):
-                for dy in range(-3, 4):
-                    if dx == 0 and dy == 0:
-                        continue
-                    if _try_place(cx + dx, cy + dy):
-                        break
-                else:
-                    continue
-                break
+            if cv.downstream_tile() in fp:
+                # cv delivers to machine. Inserter picks from where cv used to
+                # get its input (its upstream_tile), drops on machine.
+                # Pickup direction = OPPOSITE of cv.direction (looking back
+                # from cv toward its upstream).
+                interface_events.append({
+                    "tile": (cv.x, cv.y),
+                    "pickup": OPPOSITE[cv.direction],
+                })
+                interface_ids.add(cv.id)
+            elif cv.upstream_tile() in fp:
+                # cv receives from machine. Inserter picks from machine
+                # (upstream_tile of cv, which lies on the footprint), drops
+                # on cv's downstream tile.
+                # Pickup direction = OPPOSITE of cv.direction (toward machine).
+                interface_events.append({
+                    "tile": (cv.x, cv.y),
+                    "pickup": OPPOSITE[cv.direction],
+                })
+                interface_ids.add(cv.id)
 
-    if not placed_positions:
-        cmds.append("-- WARNING: could not place any substation")
-        return cmds
+    # Drop the interface conveyors from the layout so we don't emit them as belts.
+    lay.conveyors = [cv for cv in lay.conveyors if cv.id not in interface_ids]
 
-    # One infinite power source (EEI) next to the first substation.
-    sx, sy = placed_positions[0]
-    for cx, cy in [(sx + 2, sy), (sx - 1, sy), (sx, sy + 2), (sx, sy - 1)]:
-        if 0 <= cx and 0 <= cy and (cx, cy) not in occupied:
-            eei_pos = _center(cx, cy, (1, 1))
-            cmds.append(_create_entity_lua(POWER_SOURCE, eei_pos))
-            cmds.append(
-                f"local eei = game.surfaces[1].find_entity('{POWER_SOURCE}', "
-                f"{_lua_position(eei_pos)}); "
-                "if eei then eei.electric_buffer_size = 1e12; "
-                "eei.power_production = 1e9 end"
-            )
-            occupied.add((cx, cy))
-            break
-    return cmds
+    # ---- Compute expanded grid size ----
+    w, h = lay.grid_size
+    max_x = max((cv.x for cv in lay.conveyors), default=w - 1)
+    max_y = max((cv.y for cv in lay.conveyors), default=h - 1)
+    min_x = min((cv.x for cv in lay.conveyors), default=0)
+    min_y = min((cv.y for cv in lay.conveyors), default=0)
+    if min_x < 0 or min_y < 0:
+        # Shift everything into non-negative coords.
+        dx = max(0, -min_x)
+        dy = max(0, -min_y)
+        for cv in lay.conveyors:
+            cv.x += dx
+            cv.y += dy
+        for a in lay.assemblers:
+            a.x += dx
+            a.y += dy
+        for c in lay.chests:
+            c.x += dx
+            c.y += dy
+        max_x += dx
+        max_y += dy
+    grid_w = max(w, max_x + 1)
+    grid_h = max(h, max_y + 1)
+    result.grid_size = (grid_w, grid_h)
 
+    # ---- Job 1: emit chests + assemblers ----
+    for chest in lay.chests:
+        result.entities.append(_translate_chest(chest, next(ids)))
+    for asm in lay.assemblers:
+        result.entities.append(_translate_assembler(asm, next(ids)))
 
-def _infinity_chest_lua(pos: tuple[float, float], item: str) -> list[str]:
-    """Create an infinity-chest at pos configured to spawn `item` at count 1000."""
-    lua_pos = _lua_position(pos)
-    return [
-        _create_entity_lua("infinity-chest", pos),
-        f"local c = game.surfaces[1].find_entity('infinity-chest', {lua_pos}); "
-        f"if c then c.set_infinity_container_filter(1, "
-        f"{{name='{item}', count=1000, mode='at-least', index=1}}) end",
-    ]
+    # ---- Job 3: crossings -> undergrounds ----
+    tile_conveyors: dict[tuple[int, int], list[Conveyor]] = {}
+    for cv in lay.conveyors:
+        tile_conveyors.setdefault((cv.x, cv.y), []).append(cv)
 
-
-def _machine_output_item(m: Machine) -> str | None:
-    if "mining-drill" in m.type:
-        return m.target_resource
-    if m.recipe and m.recipe in RECIPES:
-        products = RECIPES[m.recipe].products
-        if len(products) == 1:
-            return next(iter(products))
-    return None
-
-
-def _machine_input_feed_commands(layout: Layout) -> list[str]:
-    """For each assembler/furnace with a recipe, feed every ingredient via an
-    infinity-chest + inserter placed adjacent to the machine. Skips ingredients
-    that would collide with existing entities or the map edge. This bypasses
-    the layout's own input belts — used when blueprints omit miners/inputs.
-    """
-    machines_by_id = {m.id: m for m in layout.machines}
-    tile_owner: dict[tuple[int, int], tuple[str, str]] = {}
-    for m in layout.machines:
-        for t in layout.machine_footprint(m):
-            tile_owner[t] = ("machine", m.id)
-    for b in layout.belts:
-        for bt in b.tiles:
-            tile_owner[(bt.x, bt.y)] = ("belt", b.id)
-    for i in layout.inserters:
-        tile_owner[(i.x, i.y)] = ("inserter", i.id)
-
-    def _adj_tiles(m: Machine) -> list[tuple[int, int]]:
-        w, h = MACHINES[m.type].size
-        adj: list[tuple[int, int]] = []
-        for dx in range(w):
-            adj.append((m.x + dx, m.y - 1))
-            adj.append((m.x + dx, m.y + h))
-        for dy in range(h):
-            adj.append((m.x - 1, m.y + dy))
-            adj.append((m.x + w, m.y + dy))
-        return adj
-
-    # For each machine input inserter, determine what item it already delivers.
-    # If the source item can be inferred (from a machine or previously-inferred
-    # belt), we don't need to feed that ingredient again.
-    already_fed: dict[str, set[str]] = {m.id: set() for m in layout.machines}
-    for i in layout.inserters:
-        dx, dy = DIR_DELTA[i.direction]
-        drop = (i.x + dx, i.y + dy)
-        snk = tile_owner.get(drop)
-        if not snk or snk[0] != "machine":
-            continue
-        odx, ody = DIR_DELTA[OPPOSITE[i.direction]]
-        pickup = (i.x + odx, i.y + ody)
-        src = tile_owner.get(pickup)
-        if src and src[0] == "machine":
-            it = _machine_output_item(machines_by_id[src[1]])
-            if it:
-                already_fed[snk[1]].add(it)
-        elif src and src[0] == "belt":
-            for b in layout.belts:
-                if b.id == src[1] and b.item != "unknown":
-                    already_fed[snk[1]].add(b.item)
-                    break
-
-    cmds: list[str] = []
-    occupied = set(tile_owner.keys())
-    for m in layout.machines:
-        if "mining-drill" in m.type:
-            continue
-        if not m.recipe or m.recipe not in RECIPES:
-            continue
-        ingredients = set(RECIPES[m.recipe].ingredients.keys())
-        # Furnaces additionally need coal for fuel.
-        if _machine_kind(m.type) == "furnace":
-            ingredients.add("coal")
-        missing = ingredients - already_fed[m.id]
-        for item in missing:
-            placed = False
-            for ax, ay in _adj_tiles(m):
-                # Need two free tiles: inserter at (ax,ay), chest at outward.
-                ox, oy = ax - m.x, ay - m.y
-                w, h = MACHINES[m.type].size
-                # Determine outward direction from machine.
-                if oy == -1:
-                    step = (0, -1); insr_dir = "south"
-                elif oy == h:
-                    step = (0, 1); insr_dir = "north"
-                elif ox == -1:
-                    step = (-1, 0); insr_dir = "east"
-                elif ox == w:
-                    step = (1, 0); insr_dir = "west"
-                else:
-                    continue
-                chest_pos = (ax + step[0], ay + step[1])
-                if (ax, ay) in occupied or chest_pos in occupied:
-                    continue
-                # Inserter with our-direction = insr_dir (drop into machine).
-                cmds.append(_create_entity_lua(
-                    "inserter",
-                    _center(ax, ay, (1, 1)),
-                    direction=FACTORIO_DIRECTION[OPPOSITE[insr_dir]],
-                ))
-                cmds.extend(_infinity_chest_lua(_center(*chest_pos, (1, 1)), item))
-                occupied.add((ax, ay))
-                occupied.add(chest_pos)
-                placed = True
-                break
-            if not placed:
-                cmds.append(
-                    f"-- WARNING: no room to feed {item!r} into machine {m.id!r} at ({m.x},{m.y})"
+    processed: set[str] = set()
+    for tile, cvs in tile_conveyors.items():
+        if len(cvs) == 1:
+            result.entities.append(_translate_belt(cvs[0], next(ids)))
+            processed.add(cvs[0].id)
+        elif len(cvs) == 2:
+            cv_a, cv_b = cvs
+            if not is_perpendicular(cv_a.direction, cv_b.direction):
+                result.warnings.append(
+                    f"tile {tile}: two parallel conveyors; layout invalid, "
+                    f"emitting both as overlapping belts"
                 )
-    return cmds
-
-
-def _machine_output_sink_commands(layout: Layout) -> list[str]:
-    """For each machine whose output isn't extracted by an existing inserter
-    (or the inserter picks up but its item leads nowhere useful), place a
-    void-configured infinity-chest + inserter adjacent to remove products.
-    Ensures measured production reflects steady-state, not a one-shot buffer fill.
-    """
-    machines_by_id = {m.id: m for m in layout.machines}
-    tile_owner: dict[tuple[int, int], tuple[str, str]] = {}
-    for m in layout.machines:
-        for t in layout.machine_footprint(m):
-            tile_owner[t] = ("machine", m.id)
-    for b in layout.belts:
-        for bt in b.tiles:
-            tile_owner[(bt.x, bt.y)] = ("belt", b.id)
-    for i in layout.inserters:
-        tile_owner[(i.x, i.y)] = ("inserter", i.id)
-
-    # Machines with at least one inserter picking from them.
-    extracted: set[str] = set()
-    for i in layout.inserters:
-        odx, ody = DIR_DELTA[OPPOSITE[i.direction]]
-        pickup = (i.x + odx, i.y + ody)
-        src = tile_owner.get(pickup)
-        if src and src[0] == "machine":
-            extracted.add(src[1])
-
-    def _adj_tiles(m: Machine) -> list[tuple[int, int]]:
-        w, h = MACHINES[m.type].size
-        adj: list[tuple[int, int]] = []
-        for dx in range(w):
-            adj.append((m.x + dx, m.y - 1))
-            adj.append((m.x + dx, m.y + h))
-        for dy in range(h):
-            adj.append((m.x - 1, m.y + dy))
-            adj.append((m.x + w, m.y + dy))
-        return adj
-
-    cmds: list[str] = []
-    occupied = set(tile_owner.keys())
-    for m in layout.machines:
-        if "mining-drill" in m.type:
-            continue
-        out_item = _machine_output_item(m)
-        if not out_item:
-            continue
-        # Always add void sink for green-science producers; existing extractors
-        # in the blueprint may lead to dead-end belts that stall the output.
-        # For other outputs, only add sink if nothing extracts from it.
-        if out_item != GREEN_SCIENCE_ITEM and m.id in extracted:
-            continue
-        placed = False
-        for ax, ay in _adj_tiles(m):
-            ox, oy = ax - m.x, ay - m.y
-            w, h = MACHINES[m.type].size
-            if oy == -1:
-                step = (0, -1); insr_dir = "north"
-            elif oy == h:
-                step = (0, 1); insr_dir = "south"
-            elif ox == -1:
-                step = (-1, 0); insr_dir = "west"
-            elif ox == w:
-                step = (1, 0); insr_dir = "east"
+                result.entities.append(_translate_belt(cv_a, next(ids)))
+                result.entities.append(_translate_belt(cv_b, next(ids)))
+                processed.update({cv_a.id, cv_b.id})
+                continue
+            # Choose the surface belt vs the undergrounded belt. Convention:
+            # keep the horizontal one as belt if one is horizontal, else keep cv_a.
+            if cv_a.direction in ("east", "west"):
+                cv_belt, cv_under = cv_a, cv_b
             else:
-                continue
-            chest_pos = (ax + step[0], ay + step[1])
-            if (ax, ay) in occupied or chest_pos in occupied:
-                continue
-            # Inserter our_direction = insr_dir (drops outward, away from machine).
-            cmds.append(_create_entity_lua(
-                "inserter",
-                _center(ax, ay, (1, 1)),
-                direction=FACTORIO_DIRECTION[OPPOSITE[insr_dir]],
-            ))
-            chest_center = _center(*chest_pos, (1, 1))
-            cmds.append(_create_entity_lua("infinity-chest", chest_center))
-            cmds.append(
-                f"local c = game.surfaces[1].find_entity('infinity-chest', "
-                f"{_lua_position(chest_center)}); "
-                "if c then c.remove_unfiltered_items = true end"
-            )
-            occupied.add((ax, ay))
-            occupied.add(chest_pos)
-            placed = True
-            break
-        if not placed:
-            cmds.append(f"-- WARNING: no room for output sink at machine {m.id!r}")
-    return cmds
+                cv_belt, cv_under = cv_b, cv_a
+            # Belt at the crossing tile.
+            result.entities.append(_translate_belt(cv_belt, next(ids)))
+            processed.add(cv_belt.id)
+            # Underground entry: one tile upstream of the crossing along cv_under.
+            entry_tile = (tile[0] - DIR_DELTA[cv_under.direction][0],
+                          tile[1] - DIR_DELTA[cv_under.direction][1])
+            exit_tile  = (tile[0] + DIR_DELTA[cv_under.direction][0],
+                          tile[1] + DIR_DELTA[cv_under.direction][1])
+            # Emit entry + exit. If a conveyor exists at entry/exit tile with
+            # the same direction, mark it processed so we don't double-emit.
+            for other in tile_conveyors.get(entry_tile, []):
+                if other.direction == cv_under.direction:
+                    processed.add(other.id)
+            for other in tile_conveyors.get(exit_tile, []):
+                if other.direction == cv_under.direction:
+                    processed.add(other.id)
+            result.entities.append(_translate_underground(
+                cv_under, next(ids), role="input", tile=entry_tile))
+            result.entities.append(_translate_underground(
+                cv_under, next(ids), role="output", tile=exit_tile))
+            processed.add(cv_under.id)
+            # Underground extends the effective grid — update grid_size.
+            for t in (entry_tile, exit_tile):
+                if t[0] + 1 > result.grid_size[0]:
+                    result.grid_size = (t[0] + 1, result.grid_size[1])
+                if t[1] + 1 > result.grid_size[1]:
+                    result.grid_size = (result.grid_size[0], t[1] + 1)
+        else:
+            result.warnings.append(f"tile {tile}: {len(cvs)} conveyors; skipped")
 
+    # Emit any conveyors that weren't handled above (shouldn't happen normally).
+    for cv in lay.conveyors:
+        if cv.id not in processed:
+            result.entities.append(_translate_belt(cv, next(ids)))
 
-def _dead_end_sink_commands(layout: Layout) -> list[str]:
-    """For each belt with no consumer inserter, place an inserter + steel-chest
-    two tiles downstream of the belt tip. Mirrors the sim, which treats such
-    belts as feeding an implicit sink. Chests may be placed outside the layout
-    grid (Factorio's surface is unbounded).
-    """
-    inserter_pickup_tiles: set[tuple[int, int]] = set()
-    for i in layout.inserters:
-        odx, ody = DIR_DELTA[OPPOSITE[i.direction]]
-        inserter_pickup_tiles.add((i.x + odx, i.y + ody))
+    # ---- Job 2 continued: emit inserters at each recorded interface tile ----
+    for ev in interface_events:
+        result.entities.append(_make_inserter(ev["tile"], ev["pickup"], next(ids)))
 
-    occupied = set(layout.occupied_tiles().keys())
-    cmds: list[str] = []
-    for b in layout.belts:
-        if any((t.x, t.y) in inserter_pickup_tiles for t in b.tiles):
-            continue
-        tip = b.tiles[-1]
-        dx, dy = DIR_DELTA[tip.direction]
-        insr_pos = (tip.x + dx, tip.y + dy)
-        chest_pos = (tip.x + 2 * dx, tip.y + 2 * dy)
-        if insr_pos in occupied or chest_pos in occupied:
-            cmds.append(
-                f"-- WARNING: dead-end sink for belt {b.id!r} not placed; "
-                f"tiles {insr_pos} or {chest_pos} occupied"
-            )
-            continue
-        inserter_dir_factorio = FACTORIO_DIRECTION[OPPOSITE[tip.direction]]
-        cmds.append(_create_entity_lua(
-            "inserter",
-            _center(insr_pos[0], insr_pos[1], (1, 1)),
-            direction=inserter_dir_factorio,
-        ))
-        cmds.append(_create_entity_lua(
-            "steel-chest",
-            _center(chest_pos[0], chest_pos[1], (1, 1)),
-        ))
-        occupied.add(insr_pos)
-        occupied.add(chest_pos)
-    return cmds
-
-
-def _resource_commands(res: Resource) -> list[str]:
-    cmds: list[str] = []
-    for dx in range(res.size):
-        for dy in range(res.size):
-            pos = _center(res.x + dx, res.y + dy, (1, 1))
-            cmds.append(_create_entity_lua(
-                res.type, pos, force="neutral", amount=RESOURCE_ORE_AMOUNT,
-            ))
-    return cmds
-
-
-def _machine_command(m: Machine) -> str:
-    spec = MACHINES[m.type]
-    pos = _center(m.x, m.y, spec.size)
-    # Only assembling machines accept set_recipe(). Furnaces smelt whatever ore is
-    # inserted into them (no explicit recipe), and miners have no recipe concept.
-    recipe = m.recipe if m.type.startswith("assembling-machine-") else None
-    # For miners, `direction` is the drop direction and Factorio's convention
-    # matches ours (no inversion, unlike inserters). For furnaces/assemblers
-    # the direction is cosmetic — Factorio inserters can access any side.
-    direction = FACTORIO_DIRECTION[m.direction] if m.type == "electric-mining-drill" else None
-    return _create_entity_lua(m.type, pos, recipe=recipe, direction=direction)
-
-
-def _inserter_command(i: Inserter) -> str:
-    pos = _center(i.x, i.y, (1, 1))
-    # `i.type` carries the tier (inserter / fast-inserter / stack-inserter).
-    return _create_entity_lua(i.type, pos, direction=_factorio_inserter_direction(i.direction))
-
-
-def _belt_commands(b: Belt) -> list[str]:
-    # `b.type` carries the belt tier (transport-belt / fast- / express-).
-    return [
-        _create_entity_lua(
-            b.type,
-            _center(t.x, t.y, (1, 1)),
-            direction=FACTORIO_DIRECTION[t.direction],
-        )
-        for t in b.tiles
-    ]
-
-
-def layout_to_lua_commands(layout: Layout, *, add_power: bool = True,
-                            feed_missing_inputs: bool = False) -> list[str]:
-    """Return the ordered Lua commands to build this layout on FLE surface 1.
-
-    Order: clear surface → power infra → resources → machines → inserters → belts.
-    Each list element is a single Lua statement (may include semicolons).
-    """
-    cmds: list[str] = [_clear_surface_lua()]
-    if add_power:
-        cmds.extend(_power_grid_commands(layout))
-    for r in layout.resources:
-        cmds.extend(_resource_commands(r))
-    for m in layout.machines:
-        cmds.append(_machine_command(m))
-    for i in layout.inserters:
-        cmds.append(_inserter_command(i))
-    for b in layout.belts:
-        cmds.extend(_belt_commands(b))
-    cmds.extend(_dead_end_sink_commands(layout))
-    if feed_missing_inputs:
-        cmds.extend(_machine_input_feed_commands(layout))
-        cmds.extend(_machine_output_sink_commands(layout))
-    return cmds
-
-
-def read_production_count_lua(item_id: str) -> str:
-    """Return a Lua one-liner that rcon-prints the total-ever-produced count.
-
-    Caller pattern (in fle_driver): capture count before the timing window,
-    sleep, capture count after, subtract in Python, divide by wall time.
-
-    Factorio 2.0 renamed the stats API: `force.item_production_statistics`
-    (attribute) → `force.get_item_production_statistics(surface)` (method).
-    See FLE `fle/env/tools/admin/get_production_stats/server.lua`.
-    """
-    return (
-        f"local stats = game.forces['player']"
-        f".get_item_production_statistics(game.surfaces[1]); "
-        f"rcon.print(stats.input_counts['{item_id}'] or 0)"
-    )
-
-
-def set_game_speed_lua(speed: float) -> str:
-    return f"game.speed = {speed:g}"
-
-
-# --------- Blueprint dict output ---------
-
-
-def layout_to_blueprint_dict(layout: Layout) -> dict:
-    """Return the layout in Factorio's blueprint schema (dict form).
-
-    See https://wiki.factorio.com/Blueprint_string_format. The full blueprint
-    string is `'0' + base64(zlib(json(this dict)))`; we return only the dict so
-    tests can inspect it without binary encoding.
-    """
-    entities: list[dict] = []
-    idx = 1
-
-    for m in layout.machines:
-        spec = MACHINES[m.type]
-        e: dict = {
-            "entity_number": idx,
-            "name": m.type,
-            "position": {"x": m.x + spec.size[0] / 2, "y": m.y + spec.size[1] / 2},
-        }
-        if m.recipe:
-            e["recipe"] = m.recipe
-        entities.append(e)
-        idx += 1
-
-    for ins in layout.inserters:
-        entities.append({
-            "entity_number": idx,
-            "name": "inserter",
-            "position": {"x": ins.x + 0.5, "y": ins.y + 0.5},
-            "direction": _factorio_inserter_direction(ins.direction),
-        })
-        idx += 1
-
-    for b in layout.belts:
-        for t in b.tiles:
-            entities.append({
-                "entity_number": idx,
-                "name": "transport-belt",
-                "position": {"x": t.x + 0.5, "y": t.y + 0.5},
-                "direction": FACTORIO_DIRECTION[t.direction],
-            })
-            idx += 1
-
-    return {
-        "blueprint": {
-            "icons": [
-                {"signal": {"type": "item", "name": "logistic-science-pack"}, "index": 1}
-            ],
-            "entities": entities,
-            "item": "blueprint",
-            "version": FACTORIO_VERSION_INT,
-        }
-    }
+    return result

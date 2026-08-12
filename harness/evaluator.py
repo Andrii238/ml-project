@@ -1,94 +1,140 @@
-"""End-to-end policy evaluation harness.
+"""End-to-end policy evaluation.
 
-`Policy` is any callable taking a prompt string and returning a completion string.
-`evaluate_policy` runs the policy on a list of layouts, records per-layout
-rewards, valid-edit rate and invalid-JSON rate — the metrics needed for plan.md
-§Baseline evaluation notebook.
+`evaluate_policy` runs a callable policy on a list of prompts, aggregates
+metrics per completion, and returns a summary. Works with any callable
+`(prompts, *, seed=None) -> list[completions]` — including `QwenPolicy` or
+a mock function for tests.
+
+Metrics per completion:
+- reward (composite)
+- green_science_rate (packs/sec delivered)
+- machine_count / conveyor_count / total_cells
+- valid (parsed AND at least one edit applied)
+- parse_ok / any_edits_applied
+
+Aggregate:
+- mean/std of each numeric metric.
+- valid_rate, parse_ok_rate.
+- per-metric std across samples for confidence intervals.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import statistics
 from dataclasses import dataclass, field
-from statistics import mean
+from typing import Any, Callable, Sequence
 
+from harness.edit_applier import apply_edits
+from harness.edit_parser import parse_edits
 from mini_factorio.layout import Layout
-from mini_factorio.reward import RewardBreakdown, compute_reward
+from mini_factorio.reward import DEFAULT_CONFIG, RewardConfig, compute_reward
+from mini_factorio.simulator import simulate
 
-from .edit_applier import apply_edits
-from .edit_parser import parse_edits
-from .prompt_builder import build_prompt
+from training.reward_wrapper import layout_from_prompt
 
-Policy = Callable[[str], str]
+Policy = Callable[..., list[str]]
 
 
 @dataclass
-class EpisodeResult:
-    layout_before: Layout
-    layout_after: Layout
-    completion: str
+class SampleMetrics:
+    seed: int | None
     parse_ok: bool
-    n_edits_attempted: int
-    n_edits_applied: int
-    edit_errors: list[str]
-    reward: RewardBreakdown
+    edits_parsed: int
+    edits_applied: int
+    reward: float
+    green_science_rate: float
+    total_science_produced: float
+    machine_count: int
+    conveyor_count: int
+    total_cells: int
+    valid: bool                # parse_ok AND at least one edit applied
+    completion: str
 
 
 @dataclass
-class EvalReport:
-    episodes: list[EpisodeResult] = field(default_factory=list)
+class EvalSummary:
+    n: int
+    n_valid: int
+    parse_ok_rate: float
+    valid_rate: float
+    mean_reward: float
+    std_reward: float
+    mean_green_science: float
+    mean_machine_count: float
+    mean_conveyor_count: float
+    mean_total_cells: float
+    per_sample: list[SampleMetrics] = field(default_factory=list)
 
-    def mean_reward(self) -> float:
-        return mean(e.reward.composite for e in self.episodes) if self.episodes else 0.0
-
-    def mean_green_science(self) -> float:
-        return mean(e.reward.green_science_rate for e in self.episodes) \
-            if self.episodes else 0.0
-
-    def invalid_json_rate(self) -> float:
-        if not self.episodes:
-            return 0.0
-        return sum(1 for e in self.episodes if not e.parse_ok) / len(self.episodes)
-
-    def valid_edit_rate(self) -> float:
-        total = sum(e.n_edits_attempted for e in self.episodes)
-        applied = sum(e.n_edits_applied for e in self.episodes)
-        return applied / total if total > 0 else 0.0
-
-    def summary(self) -> dict:
-        return {
-            "n_episodes": len(self.episodes),
-            "mean_reward": self.mean_reward(),
-            "mean_green_science": self.mean_green_science(),
-            "invalid_json_rate": self.invalid_json_rate(),
-            "valid_edit_rate": self.valid_edit_rate(),
-        }
+    def as_dict(self) -> dict[str, Any]:
+        d = vars(self).copy()
+        d["per_sample"] = [vars(s) for s in self.per_sample]
+        return d
 
 
-def evaluate_policy(
-    policy: Policy,
-    layouts: Sequence[Layout],
-    *,
-    samples_per_layout: int = 1,
-) -> EvalReport:
-    report = EvalReport()
-    # Prefer .propose_edits(layout) if the policy exposes it — it uses chat
-    # format + assistant prefill. Fall back to prompt-in for plain callables.
-    propose = getattr(policy, "propose_edits", None)
-    for layout in layouts:
-        prompt = build_prompt(layout) if propose is None else None
-        for _ in range(samples_per_layout):
-            completion = propose(layout) if propose is not None else policy(prompt)
-            parse = parse_edits(completion)
-            apply = apply_edits(layout, parse.edits)
-            reward = compute_reward(apply.layout)
-            report.episodes.append(EpisodeResult(
-                layout_before=layout,
-                layout_after=apply.layout,
-                completion=completion,
-                parse_ok=parse.parse_ok,
-                n_edits_attempted=len(parse.edits.edits),
-                n_edits_applied=apply.n_applied,
-                edit_errors=[e for e in apply.errors if e],
-                reward=reward,
-            ))
-    return report
+def _score_completion(prompt: str, completion: str, seed: int | None,
+                       config: RewardConfig) -> SampleMetrics:
+    parse = parse_edits(completion)
+    parse_ok = parse.parse_error is None
+    lay = layout_from_prompt(prompt)
+    if lay is None or not parse_ok:
+        return SampleMetrics(
+            seed=seed, parse_ok=parse_ok, edits_parsed=len(parse.edits),
+            edits_applied=0, reward=-50.0, green_science_rate=0.0,
+            total_science_produced=0.0, machine_count=0, conveyor_count=0,
+            total_cells=0, valid=False, completion=completion)
+    apply_res = apply_edits(lay, parse.edits)
+    sim = simulate(apply_res.layout)
+    br = compute_reward(apply_res.layout, sim=sim, config=config)
+    return SampleMetrics(
+        seed=seed, parse_ok=True, edits_parsed=len(parse.edits),
+        edits_applied=apply_res.applied, reward=br.total,
+        green_science_rate=sim.green_science_rate,
+        total_science_produced=sim.total_science_produced,
+        machine_count=apply_res.layout.machine_count(),
+        conveyor_count=apply_res.layout.conveyor_count(),
+        total_cells=apply_res.layout.total_cells_occupied(),
+        valid=apply_res.applied > 0, completion=completion)
+
+
+def evaluate_policy(policy: Policy, prompts: Sequence[str], *,
+                     seeds: Sequence[int] | None = None,
+                     samples_per_prompt: int = 1,
+                     config: RewardConfig = DEFAULT_CONFIG,
+                     **policy_kwargs: Any) -> EvalSummary:
+    """Run `policy` on each prompt `samples_per_prompt` times, score every
+    completion, return aggregate metrics."""
+    prompts_list = list(prompts)
+    if seeds is None:
+        seeds = list(range(len(prompts_list)))
+    seed_list = list(seeds)
+
+    per_sample: list[SampleMetrics] = []
+    for k in range(samples_per_prompt):
+        completions = policy(prompts_list, seed=k, **policy_kwargs) \
+            if _accepts_seed(policy) else policy(prompts_list, **policy_kwargs)
+        for prompt, comp, sd in zip(prompts_list, completions, seed_list):
+            per_sample.append(_score_completion(prompt, comp, sd, config))
+
+    n = len(per_sample)
+    n_valid = sum(1 for s in per_sample if s.valid)
+    n_parse_ok = sum(1 for s in per_sample if s.parse_ok)
+    rewards = [s.reward for s in per_sample]
+    return EvalSummary(
+        n=n, n_valid=n_valid,
+        parse_ok_rate=n_parse_ok / n if n else 0.0,
+        valid_rate=n_valid / n if n else 0.0,
+        mean_reward=statistics.fmean(rewards) if rewards else 0.0,
+        std_reward=statistics.pstdev(rewards) if len(rewards) > 1 else 0.0,
+        mean_green_science=statistics.fmean(s.green_science_rate for s in per_sample) if per_sample else 0.0,
+        mean_machine_count=statistics.fmean(s.machine_count for s in per_sample) if per_sample else 0.0,
+        mean_conveyor_count=statistics.fmean(s.conveyor_count for s in per_sample) if per_sample else 0.0,
+        mean_total_cells=statistics.fmean(s.total_cells for s in per_sample) if per_sample else 0.0,
+        per_sample=per_sample,
+    )
+
+
+def _accepts_seed(policy: Policy) -> bool:
+    import inspect
+    try:
+        return "seed" in inspect.signature(policy).parameters
+    except (TypeError, ValueError):
+        return False

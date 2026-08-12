@@ -1,175 +1,140 @@
-"""GRPO training entrypoint.
+"""GRPO training entry point.
 
-Runs `trl.GRPOTrainer` with a LoRA adapter over `Qwen2.5-Coder-1.5B-Instruct`,
-using our simulator-backed reward (`reward_wrapper.reward_fn`). Saves a
-checkpoint per outer iteration so `evaluate.py` can compare `policy_0` (base) to
-`policy_1..policy_N` (adapters).
+TRL's `GRPOTrainer` + LoRA on the SFT-warmed Qwen model. Uses our
+`training.reward_wrapper.reward_fn` as the reward function.
 
-Two run modes:
-    --dry-run   : G=2, 2 steps, 1 iteration. ~1 minute. Confirms the trainer
-                  starts, reward returns floats, KL logs, and a checkpoint
-                  saves. Required smoke test before any real run.
-    (default)   : G=8, N iterations x M steps per plan §Task 3 Config.
+Colab usage:
 
-Usage:
-    python -m training.train_grpo --dry-run --output-dir ./ckpts/dry
-    python -m training.train_grpo --output-dir ./ckpts/run1
+    from training.train_grpo import train
+    train(sft_adapter='/content/ckpts/sft', output_dir='/content/ckpts/grpo')
 
-On a T4 (Colab): use default. On a Mac (local): use --dry-run only; full runs
-will be very slow.
+Hyperparameters mirror `plan.md` §Task 3 (group size 8, β 0.04, LR 5e-5,
+~200 optimizer steps per iteration). Adjustable via `GRPOConfig`.
 """
 from __future__ import annotations
 
-import argparse
-from pathlib import Path
+from dataclasses import dataclass
+from typing import Any
 
-import torch
-from peft import LoraConfig, PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import GRPOConfig, GRPOTrainer
-
-from training.data import SplitSizes, build_curriculum_train_dataset, build_datasets
+from harness.prompt_builder import SYSTEM_MESSAGE
+from training.data import TRAIN_SEEDS
 from training.reward_wrapper import reward_fn
 
-BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+
+DEFAULT_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 
 
-def _lora_config() -> LoraConfig:
-    return LoraConfig(
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ],
-    )
+@dataclass
+class GRPOConfig:
+    model_name: str = DEFAULT_MODEL
+    sft_adapter: str | None = None
+    output_dir: str = "./ckpts/grpo"
+
+    # GRPO hyperparameters
+    num_generations: int = 8            # G — group size
+    temperature: float = 0.8
+    max_new_tokens: int = 1024
+    beta: float = 0.04
+    learning_rate: float = 5e-5
+    max_steps: int = 200
+    per_device_batch_size: int = 2
+    gradient_accumulation_steps: int = 4
+
+    # LoRA
+    lora_rank: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
+
+    load_in_4bit: bool = True
+    seed: int = 42
 
 
-def _pick_dtype() -> torch.dtype:
-    if torch.cuda.is_available():
-        return torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    # Mac / CPU fallback
-    return torch.float32
+def prepare_prompt_dataset():
+    """HF Dataset with one column `prompt`, seeded by TRAIN_SEEDS."""
+    from datasets import Dataset
+    from mini_factorio.random_layouts import empty_episode
+    from harness.prompt_builder import build_user_message
+
+    rows = [{"prompt": build_user_message(empty_episode(seed=s))}
+            for s in TRAIN_SEEDS]
+    return Dataset.from_list(rows)
 
 
-def _grpo_config(args: argparse.Namespace) -> GRPOConfig:
-    return GRPOConfig(
-        output_dir=args.output_dir,
-        # Sampling
-        num_generations=args.group_size,          # G in plan (paper: 64, ours: 8)
-        max_completion_length=args.max_completion_length,
-        temperature=args.temperature,
-        # Optimization
-        learning_rate=args.learning_rate,
-        beta=args.kl_beta,                         # KL coeff (paper eq 3)
-        num_iterations=args.mu,                    # inner GRPO updates per batch
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        max_steps=args.max_steps,
-        # Logging / saving
-        logging_steps=1,
-        save_steps=args.save_steps,
-        save_total_limit=None,
-        report_to=[],                              # no wandb; keep it local
-        # Memory
-        gradient_checkpointing=True,
-        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
-        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
-    )
+def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
+    if config is None:
+        config = GRPOConfig(**overrides)
+    else:
+        for k, v in overrides.items():
+            setattr(config, k, v)
 
+    import torch
+    from peft import LoraConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+    from trl import GRPOConfig as TRLGRPOConfig, GRPOTrainer
 
-def train(args: argparse.Namespace) -> None:
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
-        torch_dtype=_pick_dtype(),
-        trust_remote_code=True,
-        device_map="auto" if torch.cuda.is_available() else None,
+    model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16,
+                                     "device_map": "auto"}
+    if config.load_in_4bit:
+        model_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+        )
+    model = AutoModelForCausalLM.from_pretrained(config.model_name,
+                                                    trust_remote_code=True,
+                                                    **model_kwargs)
+
+    if config.sft_adapter is not None:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, config.sft_adapter, is_trainable=True)
+
+    lora_config = LoraConfig(
+        r=config.lora_rank,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        target_modules="all-linear",
+        bias="none",
+        task_type="CAUSAL_LM",
     )
 
-    # If an SFT adapter is provided, merge it into the base model so GRPO
-    # continues from π_1 rather than the raw base. GRPO then attaches its own
-    # trainable LoRA on top of the merged weights.
-    peft_config = _lora_config()
-    if args.init_adapter is not None:
-        print(f"Loading SFT adapter from {args.init_adapter} and merging ...", flush=True)
-        model = PeftModel.from_pretrained(model, args.init_adapter)
-        model = model.merge_and_unload()
+    dataset = prepare_prompt_dataset()
 
-    if args.curriculum:
-        print("Using curriculum start layouts (stripped blueprints).", flush=True)
-        train_ds = build_curriculum_train_dataset(tokenizer)
-    else:
-        train_ds, _ = build_datasets(
-            tokenizer,
-            sizes=SplitSizes(train=args.n_train, val=args.n_val),
-        )
-    print(f"Train dataset size: {len(train_ds)}", flush=True)
+    trl_args = TRLGRPOConfig(
+        output_dir=config.output_dir,
+        num_generations=config.num_generations,
+        temperature=config.temperature,
+        max_completion_length=config.max_new_tokens,
+        beta=config.beta,
+        learning_rate=config.learning_rate,
+        max_steps=config.max_steps,
+        per_device_train_batch_size=config.per_device_batch_size,
+        gradient_accumulation_steps=config.gradient_accumulation_steps,
+        bf16=True,
+        logging_steps=5,
+        save_strategy="steps",
+        save_steps=50,
+        save_total_limit=6,
+        seed=config.seed,
+    )
 
     trainer = GRPOTrainer(
         model=model,
+        args=trl_args,
+        reward_funcs=[reward_fn],
+        train_dataset=dataset,
         processing_class=tokenizer,
-        reward_funcs=reward_fn,
-        args=_grpo_config(args),
-        train_dataset=train_ds,
-        peft_config=peft_config,
+        peft_config=lora_config if config.sft_adapter is None else None,
     )
-
     trainer.train()
-    trainer.save_model(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
-
-
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser()
-    p.add_argument("--output-dir", default="./ckpts/run", type=str)
-    p.add_argument("--dry-run", action="store_true",
-                   help="Small smoke test: G=2, 2 steps. Use before any real run.")
-    p.add_argument("--init-adapter", type=str, default=None,
-                   help="Path to SFT adapter to merge into base before GRPO. "
-                        "If unset, GRPO starts from raw base model (policy_0).")
-    p.add_argument("--curriculum", action="store_true",
-                   help="Sample GRPO prompts from stripped blueprints instead "
-                        "of random empty grids. Needed for group reward variance.")
-
-    # Data
-    p.add_argument("--n-train", type=int, default=60)
-    p.add_argument("--n-val", type=int, default=20)
-
-    # GRPO
-    p.add_argument("--group-size", type=int, default=4)
-    p.add_argument("--kl-beta", type=float, default=0.04)
-    p.add_argument("--mu", type=int, default=1, help="Inner GRPO updates per batch")
-    p.add_argument("--learning-rate", type=float, default=5e-5)
-    p.add_argument("--temperature", type=float, default=0.8)
-    p.add_argument("--max-prompt-length", type=int, default=3500)
-    p.add_argument("--max-completion-length", type=int, default=512)
-
-    # Optimizer / batching
-    p.add_argument("--per-device-train-batch-size", type=int, default=1)
-    p.add_argument("--gradient-accumulation-steps", type=int, default=8)
-    p.add_argument("--max-steps", type=int, default=200)
-    p.add_argument("--save-steps", type=int, default=50)
-
-    args = p.parse_args()
-    if args.dry_run:
-        args.group_size = 2
-        args.max_steps = 2
-        args.save_steps = 2
-        args.per_device_train_batch_size = 1
-        args.gradient_accumulation_steps = 1
-        args.n_train = 4
-        args.max_completion_length = 256
-    return args
+    trainer.save_model(config.output_dir)
+    tokenizer.save_pretrained(config.output_dir)
+    print(f"GRPO adapter saved to {config.output_dir}")
 
 
 if __name__ == "__main__":
-    train(parse_args())
+    train()

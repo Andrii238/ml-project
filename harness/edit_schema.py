@@ -1,28 +1,46 @@
-"""Edit schema for LLM outputs (plan.md §Edit schema).
+"""Pydantic schema for LLM edit outputs (simplified env).
 
-The LLM proposes a JSON list of edits. Each edit is one of six discriminated
-variants below. `EditList` is the top-level container the parser targets.
+Four edit types:
+- place_chest      {op, kind, x, y, id}
+- place_assembler  {op, tier, x, y, id}
+- place_conveyor   {op, tier, x, y, direction, id}
+- remove_entity    {op, id}
+
+`parse_edit(dict)` normalizes a raw dict into a typed model. `edits_from_json`
+in `edit_parser.py` chains parsing over an entire LLM response.
 """
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ValidationError
 
-Direction = Literal["north", "east", "south", "west"]
+from mini_factorio.entities import AssemblerTier, ChestKind, ConveyorTier, Direction
 
 
-class AddEntity(BaseModel):
-    op: Literal["add_entity"] = "add_entity"
+class PlaceChest(BaseModel):
+    op: Literal["place_chest"] = "place_chest"
     id: str
-    type: str  # 'electric-mining-drill' | 'stone-furnace' | 'assembling-machine-1'
+    kind: ChestKind
     x: int
     y: int
-    # Required for miners (drop_position depends on facing); cosmetic for
-    # furnaces/assemblers. Optional so old completions still parse.
-    direction: Direction | None = None
-    recipe: str | None = None
-    target_resource: str | None = None
+
+
+class PlaceAssembler(BaseModel):
+    op: Literal["place_assembler"] = "place_assembler"
+    id: str
+    tier: AssemblerTier
+    x: int
+    y: int
+
+
+class PlaceConveyor(BaseModel):
+    op: Literal["place_conveyor"] = "place_conveyor"
+    id: str
+    tier: ConveyorTier
+    x: int
+    y: int
+    direction: Direction
 
 
 class RemoveEntity(BaseModel):
@@ -30,37 +48,25 @@ class RemoveEntity(BaseModel):
     id: str
 
 
-class AddInserter(BaseModel):
-    op: Literal["add_inserter"] = "add_inserter"
-    id: str
-    x: int
-    y: int
-    direction: Direction
+Edit = Union[PlaceChest, PlaceAssembler, PlaceConveyor, RemoveEntity]
+
+_EDIT_MODELS: dict[str, type[BaseModel]] = {
+    "place_chest":     PlaceChest,
+    "place_assembler": PlaceAssembler,
+    "place_conveyor":  PlaceConveyor,
+    "remove_entity":   RemoveEntity,
+}
 
 
-class AddBelt(BaseModel):
-    op: Literal["add_belt"] = "add_belt"
-    id: str
-    item: str
-    tiles: list[tuple[int, int, Direction]] = Field(min_length=1)
-
-
-class RemoveBelt(BaseModel):
-    op: Literal["remove_belt"] = "remove_belt"
-    id: str
-
-
-class ExtendBelt(BaseModel):
-    op: Literal["extend_belt"] = "extend_belt"
-    id: str
-    tiles: list[tuple[int, int, Direction]] = Field(min_length=1)
-
-
-Edit = Annotated[
-    Union[AddEntity, RemoveEntity, AddInserter, AddBelt, RemoveBelt, ExtendBelt],
-    Field(discriminator="op"),
-]
-
-
-class EditList(BaseModel):
-    edits: list[Edit] = []
+def parse_edit(d: dict) -> tuple[Edit | None, str | None]:
+    """Return (typed edit, None) on success, or (None, error_str) on failure."""
+    if not isinstance(d, dict):
+        return None, f"edit is not a dict: {type(d).__name__}"
+    op = d.get("op")
+    if op not in _EDIT_MODELS:
+        return None, f"unknown op {op!r}; expected one of {sorted(_EDIT_MODELS)}"
+    model = _EDIT_MODELS[op]
+    try:
+        return model.model_validate(d), None
+    except ValidationError as e:
+        return None, f"validation error for {op!r}: {e.errors()[0].get('msg', str(e))}"

@@ -1,0 +1,10 @@
+# Colab install list — mirrors [llm] extra in pyproject.toml with pinned versions
+# for reproducibility. Run: `pip install -r requirements-colab.txt`.
+transformers==4.46.3
+trl==0.12.2
+peft==0.13.2
+bitsandbytes==0.44.1
+accelerate==1.1.1
+datasets==3.1.0
+torch>=2.4          # Colab ships with a compatible torch already
+pydantic>=2.7

@@ -1,108 +1,119 @@
-"""Qwen2.5-Coder-1.5B-Instruct policy wrapper.
+"""Qwen policy wrapper for baseline eval and GRPO rollouts.
 
-Exposes `QwenPolicy` — a callable `(prompt: str) -> str` — that fits the
-`harness.evaluator.Policy` protocol. Also exposes `qwen_layout_policy` which
-takes a Layout and drives it through the full harness prompt/chat pipeline.
+Default model: `Qwen2.5-Coder-1.5B-Instruct` (plan.md §Baseline model).
 
-Model loading is lazy (constructed on first call) so importing this module is
-cheap. `torch_dtype`, `device`, and generation args are configurable but the
-defaults target our M2/16GB local setup: fp16 on MPS, temperature 0.7,
-top_p 0.9, max_new_tokens 1024 — enough for a JSON edits list without truncating.
+Loads `transformers` + `torch` lazily so this module imports even in
+environments without them (e.g., unit tests). Actual generation happens
+only on `generate(...)`.
+
+Supports:
+- optional LoRA adapter (peft) for post-SFT / post-GRPO checkpoints.
+- 4-bit quantization via bitsandbytes (Colab T4-friendly).
+- batched generation.
+
+Usage:
+    p = QwenPolicy()  # loads base model
+    outs = p.generate([prompt1, prompt2], max_new_tokens=1024, temperature=0.8)
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Sequence
 
-from mini_factorio.layout import Layout
+from harness.prompt_builder import SYSTEM_MESSAGE
 
-from .prompt_builder import build_chat_messages
 
 DEFAULT_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 
 
 @dataclass
 class QwenPolicy:
-    """Lazy-loaded Qwen policy. Reuses model+tokenizer across calls."""
-
     model_name: str = DEFAULT_MODEL
-    device: str | None = None       # "cuda" | "mps" | "cpu"; auto if None.
-    torch_dtype: str = "float16"     # "float16" | "bfloat16" | "float32"
-    temperature: float = 0.7
-    top_p: float = 0.9
-    max_new_tokens: int = 2048
-    do_sample: bool = True
+    adapter_path: str | None = None    # peft LoRA adapter, if any
+    load_in_4bit: bool = False
+    device: str = "cuda"
+    dtype: str = "bfloat16"            # or "float16" / "float32"
 
-    _model: Any = field(default=None, init=False, repr=False)
-    _tokenizer: Any = field(default=None, init=False, repr=False)
+    _model: Any = None
+    _tokenizer: Any = None
 
-    def _load(self) -> None:
+    def load(self) -> None:
         if self._model is not None:
             return
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        if self.device is None:
-            if torch.cuda.is_available():
-                self.device = "cuda"
-            elif torch.backends.mps.is_available():
-                self.device = "mps"
-            else:
-                self.device = "cpu"
+        dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16,
+                  "float32": torch.float32}[self.dtype]
 
-        dtype = {"float16": torch.float16, "bfloat16": torch.bfloat16,
-                 "float32": torch.float32}[self.torch_dtype]
-        # MPS dislikes fp16 for some kernels; fall back to fp32 there.
-        if self.device == "mps" and dtype == torch.float16:
-            dtype = torch.float32
+        kwargs: dict[str, Any] = {"torch_dtype": dtype}
+        if self.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=dtype,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+            )
+        else:
+            kwargs["device_map"] = self.device
 
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=dtype
-        ).to(self.device)
-        self._model.eval()
+        tok = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        if tok.pad_token is None:
+            tok.pad_token = tok.eos_token
+        model = AutoModelForCausalLM.from_pretrained(self.model_name,
+                                                       trust_remote_code=True,
+                                                       **kwargs)
+        if self.adapter_path is not None:
+            from peft import PeftModel
+            model = PeftModel.from_pretrained(model, self.adapter_path)
+        model.eval()
+        self._tokenizer = tok
+        self._model = model
 
-    def __call__(self, prompt: str) -> str:
-        """Prompt-in, completion-out. Wraps `prompt` as a user message."""
-        return self.chat([{"role": "user", "content": prompt}])
+    def _wrap_chat(self, user_message: str) -> str:
+        msgs = [
+            {"role": "system", "content": SYSTEM_MESSAGE},
+            {"role": "user", "content": user_message},
+        ]
+        return self._tokenizer.apply_chat_template(
+            msgs, tokenize=False, add_generation_prompt=True)
 
-    def chat(
-        self,
-        messages: list[dict[str, str]],
-        response_prefix: str = "",
-    ) -> str:
-        """Chat-format entry point. Returns the assistant's reply string.
-
-        If `response_prefix` is set, that text is appended to the templated
-        prompt (as if the assistant already emitted it) and prepended back to
-        the returned string. Used to constrain outputs to a specific shape
-        (e.g. '{"edits": [' forces the reply to be a JSON edit list).
-        """
+    def generate(self, prompts: Sequence[str], *,
+                 max_new_tokens: int = 1024,
+                 temperature: float = 0.8,
+                 top_p: float = 0.95,
+                 batch_size: int = 4,
+                 seed: int | None = None) -> list[str]:
+        self.load()
         import torch
 
-        self._load()
-        text = self._tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True,
-        )
-        text = text + response_prefix
-        inputs = self._tokenizer(text, return_tensors="pt").to(self.device)
-        with torch.no_grad():
-            outputs = self._model.generate(
-                **inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=self.do_sample,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                pad_token_id=self._tokenizer.eos_token_id,
-            )
-        completion_ids = outputs[0][inputs["input_ids"].shape[1]:]
-        completion = self._tokenizer.decode(completion_ids, skip_special_tokens=True)
-        return response_prefix + completion
+        if seed is not None:
+            torch.manual_seed(seed)
 
-    def propose_edits(self, layout: Layout) -> str:
-        """Full harness path: layout -> prompt -> chat -> raw completion.
+        completions: list[str] = []
+        for i in range(0, len(prompts), batch_size):
+            batch = list(prompts[i:i + batch_size])
+            chats = [self._wrap_chat(p) for p in batch]
+            enc = self._tokenizer(chats, return_tensors="pt", padding=True,
+                                   truncation=True, max_length=8192).to(
+                self._model.device)
+            with torch.no_grad():
+                out = self._model.generate(
+                    **enc,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=temperature > 0,
+                    temperature=temperature,
+                    top_p=top_p,
+                    pad_token_id=self._tokenizer.pad_token_id,
+                )
+            for j, seq in enumerate(out):
+                # Strip the prompt tokens; decode only new tokens.
+                prompt_len = enc["input_ids"][j].shape[0]
+                new = seq[prompt_len:]
+                completions.append(self._tokenizer.decode(
+                    new, skip_special_tokens=True))
+        return completions
 
-        Uses assistant-prefill `{"edits": [` so the reply is forced into a
-        JSON edit list shape. Removes the "wrote prose first" failure mode.
-        """
-        return self.chat(build_chat_messages(layout), response_prefix='{"edits": [')
+    def __call__(self, prompt: str, **kwargs: Any) -> str:
+        return self.generate([prompt], **kwargs)[0]

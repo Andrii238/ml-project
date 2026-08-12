@@ -1,141 +1,192 @@
-"""Composite reward for a Mini-Factorio layout.
+"""Reward function for the simplified green-science env.
 
-Reward:
-    R = gs_rate
-      + shape_alpha * sum_i min(w_i * item_rate_i, 1.0)   # dense chain shaping
-      - alpha * materials - beta * cells - gamma * machine_count
+Design: every coefficient lives in `RewardConfig`. Every term is computed by
+a small named function and contributes to the returned `RewardBreakdown`.
 
-`w_i` = green-science produced per unit rate of item i if fully chained
-(derived from recipe stoichiometry). Cap of 1.0 per item = saturation at
-"enough of item i for 1 GS/sec". `shape_alpha=0.1` keeps the shaping small
-enough that a real full chain (gs=1.0 + up to 7*0.1=0.7 bonus = 1.7) always
-beats any partial chain (max 7*0.1 = 0.7 with no green science).
+To swap the reward shape:
+- change coefficients: pass a modified `RewardConfig` to `compute_reward`.
+- disable a term: comment out its line in `compute_reward`.
+- add a term: add a function and add a line.
+
+The random exploration bonus is deterministic per layout: seeded by a hash
+of the layout JSON so GRPO's group-based advantage sees consistent rewards.
 """
 from __future__ import annotations
 
+import hashlib
+import random
 from dataclasses import dataclass, field
 
+from .entities import ASSEMBLERS, AssemblerTier, ConveyorTier
 from .layout import Layout
-from .recipes import RECIPES
 from .simulator import SimResult, simulate
 
-# Weight tuning: placement penalties were dropped (BETA=GAMMA=0) because the
-# original values (tuned assuming baseline achieves GS≈1) totally swamped the
-# shape bonus when GS=0, making working sub-chains score worse than empty
-# layouts. Materials penalty kept as tiny anti-bloat.
-ALPHA = 0.001  # per material item — tiny, anti-bloat
-BETA = 0.0     # was 0.01, dropped so shape bonus dominates placement cost
-GAMMA = 0.0    # was 0.05, dropped for same reason
 
-# Chain-proportional shaping. Weights = green-science-per-unit-rate of item i.
-# Derivation: 1 GS = 5.5 iron-plate + 1.5 copper-plate + 1.5 gear + 3 cable
-# + 1 circuit + 1 belt + 1 inserter at the leaf level.
-CHAIN_WEIGHT = {
-    'iron-plate': 1.0 / 5.5,
-    'copper-plate': 1.0 / 1.5,
-    'iron-gear-wheel': 1.0 / 1.5,
-    'copper-cable': 1.0 / 3.0,
-    'electronic-circuit': 1.0,
-    'transport-belt': 1.0,
-    'inserter': 1.0,
-}
-SHAPE_ALPHA = 1.0  # multiplier on the shaped bonus sum
+# ---------------------------------------------------------------- config
 
-# Penalties for structurally invalid layouts (before simulator can run).
-INVALID_LAYOUT_REWARD = -1.0
+@dataclass
+class RewardConfig:
+    # 1. Do-nothing (no assembler placed at all).
+    do_nothing_penalty: float = 30.0
 
+    # 2. Missing required chest.
+    chest_missing_penalty: float = 10.0
+    required_chest_kinds: tuple[str, ...] = (
+        "input-belts", "input-inserters", "output-science",
+    )
+
+    # 3. Milestone reward per assembler.
+    milestone_has_belts:     float = 1.0
+    milestone_has_inserters: float = 1.0
+    milestone_is_producing:  float = 2.0
+
+    # 4. Delivered green-science (main term).
+    delivered_reward: float = 100.0  # per pack/sec
+
+    # 5. Produced-but-not-delivered partial credit.
+    produced_partial_reward: float = 5.0  # per pack/sec
+
+    # 6. Per-machine cost (dollar-based).
+    asm_cost: dict[AssemblerTier, float] = field(default_factory=lambda: {
+        1: 1.06, 2: 3.22, 3: 8.94,
+    })
+
+    # 7. Per-conveyor tile cost (dollar-based).
+    conv_cost: dict[ConveyorTier, float] = field(default_factory=lambda: {
+        1: 0.06, 2: 0.46, 3: 1.26,
+    })
+
+    # 8. One-time tier-unlock penalties.
+    asm_tier2_unlock: float = 6.5
+    asm_tier3_unlock: float = 18.0
+    conv_tier2_unlock: float = 0.9
+    conv_tier3_unlock: float = 2.5
+
+    # 9. Random exploration bonus.
+    #    Per-i draw: U(0, upper / (1 + decay * i)) for the i-th placed entity.
+    random_asm_upper:   float = 2.0
+    random_asm_decay:   float = 0.3
+    random_conv_upper:  float = 0.3
+    random_conv_decay:  float = 0.1
+
+    # Whether to include the random exploration bonus term at all.
+    enable_random_bonus: bool = True
+
+
+DEFAULT_CONFIG = RewardConfig()
+
+
+# ---------------------------------------------------------------- breakdown
 
 @dataclass
 class RewardBreakdown:
-    composite: float
-    green_science_rate: float
-    materials: float
-    cells: int
-    machine_count: int
-    valid: bool
-    sim_errors: list[str]
-    item_rates: dict[str, float] = field(default_factory=dict)
-    shape_bonus: float = 0.0
+    total: float = 0.0
+    do_nothing: float = 0.0
+    chest_missing: float = 0.0
+    milestone_belts: float = 0.0
+    milestone_inserters: float = 0.0
+    milestone_producing: float = 0.0
+    delivered: float = 0.0
+    produced_partial: float = 0.0
+    machine_cost: float = 0.0
+    conveyor_cost: float = 0.0
+    asm_tier_unlock: float = 0.0
+    conv_tier_unlock: float = 0.0
+    random_bonus: float = 0.0
 
-    def to_dict(self) -> dict:
-        return {
-            "composite": self.composite,
-            "green_science_rate": self.green_science_rate,
-            "materials": self.materials,
-            "cells": self.cells,
-            "machine_count": self.machine_count,
-            "valid": self.valid,
-            "sim_errors": self.sim_errors,
-            "item_rates": self.item_rates,
-            "shape_bonus": self.shape_bonus,
-        }
+    def as_dict(self) -> dict[str, float]:
+        return {k: v for k, v in vars(self).items()}
 
 
-def _aggregate_item_rates(layout: Layout, machine_rate: dict[str, float]) -> dict[str, float]:
-    """Sum per-machine output rates by product item."""
-    rates: dict[str, float] = {}
-    for m in layout.machines:
-        if m.recipe is None or m.recipe not in RECIPES:
-            continue
-        rate = machine_rate.get(m.id, 0.0)
-        if rate <= 0.0:
-            continue
-        # Our recipes are single-product; machine_rate is that product's items/sec.
-        for prod in RECIPES[m.recipe].products:
-            rates[prod] = rates.get(prod, 0.0) + rate
-    return rates
+# ---------------------------------------------------------------- helpers
+
+def _seed_from_layout(layout: Layout) -> int:
+    h = hashlib.sha256(layout.to_json().encode("utf-8")).digest()
+    return int.from_bytes(h[:8], "big", signed=False)
 
 
-def _shape_bonus(item_rates: dict[str, float]) -> float:
-    """Sum of min(w_i * rate_i, 1.0) across shaped items. Cap prevents hoarding."""
+def _random_bonus_for_count(rng: random.Random, upper: float, decay: float,
+                              count: int) -> float:
     total = 0.0
-    for item, w in CHAIN_WEIGHT.items():
-        r = item_rates.get(item, 0.0)
-        total += min(w * r, 1.0)
+    for i in range(count):
+        bound = upper / (1.0 + decay * i)
+        total += rng.uniform(0.0, bound)
     return total
 
 
-def compute_reward(
-    layout: Layout,
-    *,
-    alpha: float = ALPHA,
-    beta: float = BETA,
-    gamma: float = GAMMA,
-    shape_alpha: float = SHAPE_ALPHA,
-) -> RewardBreakdown:
-    result: SimResult = simulate(layout)
-    validation_errs = layout.validate_layout()
-    valid = not validation_errs
-    if not valid:
-        return RewardBreakdown(
-            composite=INVALID_LAYOUT_REWARD,
-            green_science_rate=0.0,
-            materials=0.0,
-            cells=0,
-            machine_count=0,
-            valid=False,
-            sim_errors=validation_errs,
+# ---------------------------------------------------------------- main
+
+def compute_reward(layout: Layout, sim: SimResult | None = None,
+                    config: RewardConfig = DEFAULT_CONFIG) -> RewardBreakdown:
+    """Compute the composite reward for `layout`. If `sim` is None, runs
+    `simulate(layout)` internally."""
+    if sim is None:
+        sim = simulate(layout)
+
+    br = RewardBreakdown()
+
+    # 1. Do-nothing
+    n_asm = layout.machine_count()
+    if n_asm == 0:
+        br.do_nothing = -config.do_nothing_penalty
+
+    # 2. Missing required chests
+    present = {c.kind for c in layout.chests}
+    missing = [k for k in config.required_chest_kinds if k not in present]
+    br.chest_missing = -config.chest_missing_penalty * len(missing)
+
+    # 3. Milestones per assembler
+    n_has_belts = sum(1 for mf in sim.machine_flows if mf.belts_in > 0)
+    n_has_ins = sum(1 for mf in sim.machine_flows if mf.inserters_in > 0)
+    n_producing = sum(1 for mf in sim.machine_flows if mf.science_out > 0)
+    br.milestone_belts = config.milestone_has_belts * n_has_belts
+    br.milestone_inserters = config.milestone_has_inserters * n_has_ins
+    br.milestone_producing = config.milestone_is_producing * n_producing
+
+    # 4. Delivered green science
+    br.delivered = config.delivered_reward * sim.green_science_rate
+
+    # 5. Produced but not delivered
+    partial = max(0.0, sim.total_science_produced - sim.green_science_rate)
+    br.produced_partial = config.produced_partial_reward * partial
+
+    # 6. Per-machine cost
+    tier_counts = layout.machine_count_by_tier()
+    br.machine_cost = -sum(config.asm_cost[t] * tier_counts[t]
+                            for t in (1, 2, 3))
+
+    # 7. Per-conveyor tile cost
+    conv_counts = layout.conveyor_count_by_tier()
+    br.conveyor_cost = -sum(config.conv_cost[t] * conv_counts[t]
+                             for t in (1, 2, 3))
+
+    # 8. Tier unlock penalties
+    if tier_counts[2] > 0:
+        br.asm_tier_unlock -= config.asm_tier2_unlock
+    if tier_counts[3] > 0:
+        br.asm_tier_unlock -= config.asm_tier3_unlock
+    if conv_counts[2] > 0:
+        br.conv_tier_unlock -= config.conv_tier2_unlock
+    if conv_counts[3] > 0:
+        br.conv_tier_unlock -= config.conv_tier3_unlock
+
+    # 9. Random exploration bonus (deterministic per layout)
+    if config.enable_random_bonus:
+        rng = random.Random(_seed_from_layout(layout))
+        br.random_bonus = (
+            _random_bonus_for_count(rng, config.random_asm_upper,
+                                     config.random_asm_decay, n_asm)
+            + _random_bonus_for_count(rng, config.random_conv_upper,
+                                       config.random_conv_decay,
+                                       layout.conveyor_count())
         )
-    materials = layout.total_materials_used()
-    cells = layout.total_cells_occupied()
-    m_count = layout.machine_count()
-    item_rates = _aggregate_item_rates(layout, result.machine_rate)
-    shape_bonus = _shape_bonus(item_rates)
-    composite = (
-        result.green_science_rate
-        + shape_alpha * shape_bonus
-        - alpha * materials
-        - beta * cells
-        - gamma * m_count
+
+    br.total = (
+        br.do_nothing + br.chest_missing
+        + br.milestone_belts + br.milestone_inserters + br.milestone_producing
+        + br.delivered + br.produced_partial
+        + br.machine_cost + br.conveyor_cost
+        + br.asm_tier_unlock + br.conv_tier_unlock
+        + br.random_bonus
     )
-    return RewardBreakdown(
-        composite=composite,
-        green_science_rate=result.green_science_rate,
-        materials=materials,
-        cells=cells,
-        machine_count=m_count,
-        valid=True,
-        sim_errors=result.errors,
-        item_rates=item_rates,
-        shape_bonus=shape_bonus,
-    )
+    return br

@@ -1,192 +1,188 @@
-"""Assemble the prompt sent to the LLM.
+"""Prompt builder for the simplified green-science env.
 
-Sections:
-1. Game rules — recipe database, machine specs, belt/inserter constants.
-   Static across prompts. Kept short so the layout dominates the token budget.
-2. Edit schema — JSON grammar the model must emit.
-3. Task — task statement plus the current layout JSON.
-4. Reminder — output-format constraint.
+Produces a system + user message pair for the LLM. Content per plan (locked):
+- Grid contents (ASCII map, tier + direction visible per cell).
+- Current chest emission rates.
+- Task instructions (goal, recipe, edit vocabulary summary).
 
-The prompt is designed for `Qwen2.5-Coder-1.5B-Instruct` in instruction/chat
-form. The `build_prompt` return is a plain string with a system+user layout;
-call `build_chat_messages` for the messages list version.
+The precise edit-JSON schema is defined in Chunk 6 (harness/edit_schema.py).
+The prompt references the vocabulary at a summary level; the parser accepts
+the schema described there.
 """
 from __future__ import annotations
 
-import json
-
-from mini_factorio.entities import (
-    BELT_SPEED,
-    INSERTER_THROUGHPUT,
-    MACHINES,
-    PLACEABLES,
-    RESOURCE_TYPES,
-)
+from mini_factorio.entities import ASSEMBLERS
 from mini_factorio.layout import Layout
-from mini_factorio.recipes import GREEN_SCIENCE_ITEM, RECIPES
 
 
-def _rules_block() -> str:
-    lines = ["## Game rules"]
-    lines.append(f"Goal: maximize `{GREEN_SCIENCE_ITEM}` production per second.")
-    lines.append("")
-    lines.append("### Machines")
-    for mid, spec in MACHINES.items():
-        cost = ", ".join(f"{v} {k}" for k, v in spec.cost.items())
-        fuel = "coal fuel required" if spec.fuel_category == "chemical" else "no fuel"
+# --------------------------------------------------------------- ASCII grid
+
+# Single-character rendering per cell.
+# '.'      empty tile
+# 'B'      input-belts chest
+# 'I'      input-inserters chest
+# 'O'      output-science chest
+# '1'/'2'/'3'   assembler footprint of tier 1/2/3
+# '>' '<' '^' 'v'   conveyor pointing east/west/north/south (all tiers)
+# '+'      two conveyors on the same tile (a perpendicular crossing)
+# '?'      unexpected (should not normally happen)
+
+CHEST_CHAR = {
+    "input-belts": "B",
+    "input-inserters": "I",
+    "output-science": "O",
+}
+
+DIR_ARROW = {
+    "north": "^",
+    "south": "v",
+    "east":  ">",
+    "west":  "<",
+}
+
+
+def render_grid(layout: Layout) -> str:
+    w, h = layout.grid_size
+    grid: list[list[str]] = [["." for _ in range(w)] for _ in range(h)]
+
+    # Assemblers first — 3x3 footprints, filled with tier digit.
+    for a in layout.assemblers:
+        ch = str(a.tier)
+        for (x, y) in a.footprint:
+            if 0 <= x < w and 0 <= y < h:
+                grid[y][x] = ch
+
+    # Chests.
+    for c in layout.chests:
+        if 0 <= c.x < w and 0 <= c.y < h:
+            grid[c.y][c.x] = CHEST_CHAR.get(c.kind, "?")
+
+    # Conveyors — arrow. If a tile already has a conveyor arrow, mark '+'.
+    for cv in layout.conveyors:
+        if not (0 <= cv.x < w and 0 <= cv.y < h):
+            continue
+        cur = grid[cv.y][cv.x]
+        arrow = DIR_ARROW.get(cv.direction, "?")
+        if cur in ("^", "v", ">", "<"):
+            grid[cv.y][cv.x] = "+"
+        elif cur == ".":
+            grid[cv.y][cv.x] = arrow
+        # If cell already has a chest or assembler, that's an invalid layout;
+        # leave the cell showing the higher-priority entity for readability.
+
+    return "\n".join("".join(row) for row in grid)
+
+
+# --------------------------------------------------------------- entity list
+
+def render_entity_list(layout: Layout) -> str:
+    """Compact JSON-like list of placed entities, giving id + fields the ASCII
+    grid can't show (tier, id, exact chest position when covered)."""
+    lines: list[str] = []
+    for c in layout.chests:
+        lines.append(f'  {{"id":"{c.id}","kind":"{c.kind}","x":{c.x},"y":{c.y}}}')
+    for a in layout.assemblers:
         lines.append(
-            f"- `{mid}` size {spec.size[0]}x{spec.size[1]}, speed {spec.crafting_speed}, "
-            f"cost [{cost}], {fuel}"
+            f'  {{"id":"{a.id}","type":"assembler","tier":{a.tier},"x":{a.x},"y":{a.y}}}'
         )
-    lines.append("")
-    lines.append("### Placeables (1x1 each)")
-    for pid, spec in PLACEABLES.items():
-        cost = ", ".join(f"{v:g} {k}" for k, v in spec.cost_per_place.items())
-        lines.append(f"- `{pid}` cost per tile [{cost}]")
-    lines.append(
-        f"- Belt throughput: {BELT_SPEED} items/sec. "
-        f"Inserter throughput: {INSERTER_THROUGHPUT} items/sec."
-    )
-    lines.append("")
-    lines.append("### Recipes (time in seconds at speed=1.0)")
-    for rid, r in RECIPES.items():
-        ing = ", ".join(f"{v} {k}" for k, v in r.ingredients.items()) or "-"
-        out = ", ".join(f"{v} {k}" for k, v in r.products.items())
-        lines.append(f"- `{rid}` [{r.kind}, {r.time}s]: {ing} -> {out}")
-    lines.append("")
-    lines.append(f"### Resource types on the map: {', '.join(RESOURCE_TYPES)}")
-    lines.append("Miners must sit on a resource patch of their target_resource type.")
-    lines.append("Furnaces need both an ore input and a coal input (via inserters).")
-    lines.append(
-        "Inserter with direction=`east` picks from the tile to its west and drops "
-        "on the tile to its east; other directions analogous. Pickup/drop tile must "
-        "be either a machine footprint tile or a belt tile."
-    )
-    return "\n".join(lines)
+    for cv in layout.conveyors:
+        lines.append(
+            f'  {{"id":"{cv.id}","type":"conveyor","tier":{cv.tier},'
+            f'"x":{cv.x},"y":{cv.y},"direction":"{cv.direction}"}}'
+        )
+    return "[\n" + ",\n".join(lines) + "\n]" if lines else "[]"
 
 
-def _edit_schema_block() -> str:
-    return (
-        "## Edit schema\n"
-        "Reply with a JSON object `{\"edits\": [ ... ]}` where each edit is one of:\n"
-        "```\n"
-        "{\"op\": \"add_entity\", \"id\": str, \"type\": str, \"x\": int, \"y\": int, "
-        "\"direction\"?: \"north\"|\"east\"|\"south\"|\"west\", "
-        "\"recipe\"?: str, \"target_resource\"?: str}\n"
-        "{\"op\": \"remove_entity\", \"id\": str}\n"
-        "{\"op\": \"add_inserter\", \"id\": str, \"x\": int, \"y\": int, \"direction\": "
-        "\"north\"|\"east\"|\"south\"|\"west\"}\n"
-        "{\"op\": \"add_belt\", \"id\": str, \"item\": str, \"tiles\": [[x, y, dir], ...]}\n"
-        "{\"op\": \"remove_belt\", \"id\": str}\n"
-        "{\"op\": \"extend_belt\", \"id\": str, \"tiles\": [[x, y, dir], ...]}\n"
-        "```\n"
-        "Rules: unique ids, entities in-bounds, no footprint overlap, belt tiles must "
-        "be contiguous in the flow direction.\n"
-        "\n"
-        "IMPORTANT recipe → machine mapping (common source of invalid edits):\n"
-        "- `stone-furnace` ONLY runs `iron-plate` or `copper-plate`. Nothing else.\n"
-        "- `assembling-machine-1` runs everything else: `iron-gear-wheel`, "
-        "`copper-cable`, `electronic-circuit`, `transport-belt`, `inserter`, "
-        "`logistic-science-pack`.\n"
-        "- Putting a non-smelting recipe on a furnace = invalid edit (zero reward).\n"
-        "\n"
-        "MINER direction matters: a miner's `direction` is the drop side. A "
-        "north-facing miner drops on the tile above (y-1); east drops to the right "
-        "(x+size). Belt tile catching the drop must be adjacent in that direction."
-    )
+# --------------------------------------------------------------- messages
 
-
-def _examples_block() -> str:
-    """Two worked examples showing valid edit lists that improve reward.
-
-    Kept short but full: each example shows an input layout snippet and the
-    edit list that produces green-science-relevant output. Purpose: teach the
-    model (a) the JSON shape, (b) that non-empty edit lists are expected,
-    (c) the miner → belt → inserter → machine → inserter → belt pattern.
-    """
-    return (
-        "## Two worked examples\n"
-        "\n"
-        "### Example 1 — empty grid, build an iron-plate producer\n"
-        "Input layout has: iron-ore patch at (0,0) size 3, coal patch at (0,8) size 3, "
-        "no machines yet. A minimal producing edit list:\n"
-        "```json\n"
-        "{\"edits\": [\n"
-        "  {\"op\": \"add_entity\", \"id\": \"mi\", \"type\": \"electric-mining-drill\", "
-        "\"x\": 0, \"y\": 0, \"target_resource\": \"iron-ore\"},\n"
-        "  {\"op\": \"add_entity\", \"id\": \"mc\", \"type\": \"electric-mining-drill\", "
-        "\"x\": 0, \"y\": 8, \"target_resource\": \"coal\"},\n"
-        "  {\"op\": \"add_entity\", \"id\": \"f1\", \"type\": \"stone-furnace\", "
-        "\"x\": 7, \"y\": 4, \"recipe\": \"iron-plate\"},\n"
-        "  {\"op\": \"add_belt\", \"id\": \"b_ore\", \"item\": \"iron-ore\", "
-        "\"tiles\": [[3,1,\"east\"],[4,1,\"east\"],[5,1,\"south\"],[5,2,\"south\"],"
-        "[5,3,\"south\"],[5,4,\"east\"]]},\n"
-        "  {\"op\": \"add_belt\", \"id\": \"b_coal\", \"item\": \"coal\", "
-        "\"tiles\": [[3,9,\"east\"],[4,9,\"east\"],[5,9,\"north\"],[5,8,\"north\"],"
-        "[5,7,\"north\"],[5,6,\"north\"],[5,5,\"north\"]]},\n"
-        "  {\"op\": \"add_inserter\", \"id\": \"i_ore\", \"x\": 6, \"y\": 4, "
-        "\"direction\": \"east\"},\n"
-        "  {\"op\": \"add_inserter\", \"id\": \"i_coal\", \"x\": 6, \"y\": 5, "
-        "\"direction\": \"east\"},\n"
-        "  {\"op\": \"add_inserter\", \"id\": \"i_plate\", \"x\": 9, \"y\": 4, "
-        "\"direction\": \"east\"},\n"
-        "  {\"op\": \"add_belt\", \"id\": \"b_plate\", \"item\": \"iron-plate\", "
-        "\"tiles\": [[10,4,\"east\"],[11,4,\"east\"]]}\n"
-        "]}\n"
-        "```\n"
-        "Result: ~0.31 iron-plate/sec (fed by iron miner, coal fuel path complete, "
-        "output extractor drops onto a belt so backpressure rule is satisfied).\n"
-        "\n"
-        "### Example 2 — extend an iron-plate chain to make gears\n"
-        "Input layout already has iron-plate production running (like Example 1's end "
-        "state, but on a 20x20 grid with iron-plate belt going south from (10,4)). "
-        "Adding a gear assembler:\n"
-        "```json\n"
-        "{\"edits\": [\n"
-        "  {\"op\": \"add_entity\", \"id\": \"a_gear\", \"type\": \"assembling-machine-1\", "
-        "\"x\": 12, \"y\": 4, \"recipe\": \"iron-gear-wheel\"},\n"
-        "  {\"op\": \"add_inserter\", \"id\": \"i_plate_in\", \"x\": 11, \"y\": 4, "
-        "\"direction\": \"east\"},\n"
-        "  {\"op\": \"add_inserter\", \"id\": \"i_gear_out\", \"x\": 15, \"y\": 5, "
-        "\"direction\": \"east\"},\n"
-        "  {\"op\": \"add_belt\", \"id\": \"b_gear\", \"item\": \"iron-gear-wheel\", "
-        "\"tiles\": [[16,5,\"east\"],[17,5,\"east\"]]}\n"
-        "]}\n"
-        "```\n"
-        "Result: ~0.16 gear/sec (bottlenecked by upstream iron-plate rate). Note the "
-        "gear recipe runs on `assembling-machine-1`, not a furnace."
-    )
-
-
-def _layout_block(layout: Layout) -> str:
-    return (
-        "## Current layout\n"
-        "```json\n" + layout.to_json(indent=2) + "\n```"
-    )
-
-
-SYSTEM_PROMPT = (
-    "You are a Factorio factory-design assistant. Given a partial factory layout, "
-    "propose a JSON list of edits that will increase green-science-pack production "
-    "per second. Only output the JSON, no prose."
+SYSTEM_MESSAGE = (
+    "You design a factory layout to produce green science packs. "
+    "You emit JSON edits that place, remove, or move entities on a 20x20 grid. "
+    "Follow the schema exactly. Reply with the JSON array only, no prose."
 )
 
 
-def build_prompt(layout: Layout) -> str:
-    # Few-shot _examples_block was removed to stay under the 4096-token budget
-    # for SFT/eval on T4. SFT is expected to teach format compliance instead.
-    return "\n\n".join([
-        _rules_block(),
-        _edit_schema_block(),
-        _layout_block(layout),
-        "## Your reply\nReturn only the edits JSON. Do not return an empty edit list "
-        "unless the layout is already saturated — always try to add or improve something.",
-    ])
+def _render_recipe_and_map_facts(layout: Layout) -> str:
+    w, h = layout.grid_size
+    speeds = {t: ASSEMBLERS[t].crafts_per_sec_green_science for t in (1, 2, 3)}
+    return (
+        f"Grid: {w}x{h}. Coordinates (x, y): x east, y south, origin top-left.\n"
+        "Green science recipe: 1 transport-belt + 1 inserter -> 1 pack, "
+        "6-second craft time.\n"
+        f"Assembler crafts/sec on this recipe: "
+        f"asm-1={speeds[1]:.4f}, asm-2={speeds[2]:.4f}, asm-3={speeds[3]:.4f}.\n"
+        "Conveyor per-lane throughput: T1=15, T2=30, T3=45 items/sec. "
+        "Two lanes per tile; each lane carries at most one item type. "
+        "Two conveyors may share a tile only if perpendicular (crossing).\n"
+        "Machines auto-transfer from any adjacent conveyor (no inserter entity).\n"
+    )
+
+
+def _render_rates(layout: Layout) -> str:
+    return (
+        f"Chest emission rates (items/sec):\n"
+        f"  input-belts     -> transport-belt: {layout.chest_rates.belts:.3f}\n"
+        f"  input-inserters -> inserter:       {layout.chest_rates.inserters:.3f}\n"
+    )
+
+
+EDIT_VOCAB_SUMMARY = (
+    "Edit vocabulary (details in schema):\n"
+    "  {\"op\":\"place_chest\",     \"kind\":\"input-belts|input-inserters|output-science\","
+    " \"x\":int, \"y\":int, \"id\":str}\n"
+    "  {\"op\":\"place_assembler\", \"tier\":1|2|3, \"x\":int, \"y\":int, \"id\":str}\n"
+    "  {\"op\":\"place_conveyor\",  \"tier\":1|2|3, \"x\":int, \"y\":int,"
+    " \"direction\":\"north|south|east|west\", \"id\":str}\n"
+    "  {\"op\":\"remove_entity\",   \"id\":str}\n"
+)
+
+
+GOAL_MESSAGE = (
+    "Goal: place chests, assemblers, and conveyors so green-science packs "
+    "flow from producing assemblers to the output-science chest. Maximize "
+    "delivered rate; minimize wasted machines and belts. Higher tiers cost "
+    "more and unlock a one-time penalty.\n"
+)
+
+
+GRID_LEGEND = (
+    "Grid legend: '.' empty | 'B' input-belts | 'I' input-inserters | "
+    "'O' output-science | '1'/'2'/'3' assembler footprint tier 1/2/3 | "
+    "'>' east '<' west '^' north 'v' south conveyor | "
+    "'+' two perpendicular conveyors on same tile (crossing).\n"
+)
+
+
+def build_user_message(layout: Layout) -> str:
+    # The <<LAYOUT>>…<</LAYOUT>> envelope is machine-readable and used by
+    # `training.reward_wrapper.layout_from_prompt` to recover the exact layout
+    # the model saw. It's placed at the end so the human-facing view above
+    # dominates the model's context.
+    envelope = "<<LAYOUT>>" + layout.to_json() + "<</LAYOUT>>"
+    return (
+        _render_recipe_and_map_facts(layout)
+        + "\n"
+        + _render_rates(layout)
+        + "\n"
+        + GRID_LEGEND
+        + "Current layout (ASCII grid, y increases downward):\n"
+        + "```\n"
+        + render_grid(layout)
+        + "\n```\n\n"
+        + "Placed entities:\n"
+        + render_entity_list(layout)
+        + "\n\n"
+        + EDIT_VOCAB_SUMMARY
+        + "\n"
+        + GOAL_MESSAGE
+        + "\nReply with the JSON array of edits.\n\n"
+        + envelope
+    )
 
 
 def build_chat_messages(layout: Layout) -> list[dict[str, str]]:
-    """Chat-format version for Qwen2.5-Coder-Instruct."""
+    """OpenAI-style chat message list — usable with transformers.apply_chat_template."""
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": build_prompt(layout)},
+        {"role": "system", "content": SYSTEM_MESSAGE},
+        {"role": "user", "content": build_user_message(layout)},
     ]

@@ -1,207 +1,108 @@
-"""Parse an LLM completion string into an EditList.
+"""Parse an LLM response into a list of typed edits.
 
-The model is expected to emit a JSON object like:
-    {"edits": [{"op": "add_entity", "id": "m1", ...}, ...]}
+Tolerates common noise:
+- prose before/after the JSON array
+- markdown code fences around the JSON
+- trailing text after a valid JSON array
 
-but real completions often wrap this in ```json ... ``` fences or add explanatory
-prose. This parser is deliberately lenient:
-1. Strip Markdown code fences if present.
-2. Try to parse as JSON.
-3. If parsing fails or the top-level object doesn't validate, look for the first
-   `{ ... }` substring that does validate.
-4. If nothing works, return `(EditList(edits=[]), parse_ok=False)`.
+Fails cleanly on:
+- no `[` found (returns [], parse_error explaining)
+- JSON syntax error inside the array
+- truncated JSON (unclosed bracket)
 
-Callers can distinguish "malformed" from "empty on purpose" using the returned
-flag. This matches plan.md §Reward wrapper which docks -1.0 on parse failure.
+Per-edit validation errors are collected and returned alongside the successful
+edits — a partial parse still returns whichever edits validated.
 """
 from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from pydantic import ValidationError
-
-from .edit_schema import EditList
-
-_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
-_TRAILING_COMMA_RE = re.compile(r",(\s*[\]}])")
+from .edit_schema import Edit, parse_edit
 
 
 @dataclass
 class ParseResult:
-    edits: EditList
-    parse_ok: bool
-    error: str | None = None
+    edits: list[Edit] = field(default_factory=list)
+    edit_errors: list[str] = field(default_factory=list)  # per-item validation errors
+    parse_error: str | None = None                        # top-level JSON error, if any
+
+    @property
+    def ok(self) -> bool:
+        return self.parse_error is None and not self.edit_errors
 
 
-def _strip_fences(s: str) -> str:
-    m = _FENCE_RE.search(s)
-    if m:
-        return m.group(1).strip()
-    return s.strip()
+# --------------------------------------------------------------- extraction
+
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 
-def _first_json_object(s: str) -> str | None:
-    """Return the substring of the first balanced {...} block in s, or None."""
-    start = s.find("{")
-    while start != -1:
-        depth = 0
-        in_str = False
-        esc = False
-        for i in range(start, len(s)):
-            ch = s[i]
-            if in_str:
-                if esc:
-                    esc = False
-                elif ch == "\\":
-                    esc = True
-                elif ch == '"':
-                    in_str = False
-            else:
-                if ch == '"':
-                    in_str = True
-                elif ch == "{":
-                    depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0:
-                        return s[start:i + 1]
-        start = s.find("{", start + 1)
-    return None
+def _extract_json_array(text: str) -> tuple[str | None, str | None]:
+    """Return (array_text, error). Strips markdown fences and any prose
+    around the array. Truncated arrays are detected and reported."""
+    # First strip markdown fences if present. Take the first fenced block.
+    fenced = _FENCE_RE.findall(text)
+    candidate = fenced[0] if fenced else text
 
+    start = candidate.find("[")
+    if start < 0:
+        return None, "no '[' found in output"
 
-def _drop_mismatched_closers(s: str) -> str:
-    """Drop `]` or `}` that don't match the current open bracket.
-
-    Fixes the common small-model failure where the model closes the edit
-    list as `{[{}}]` instead of `{[{}]}` — brackets balanced by count but
-    wrong nesting.
-    """
-    stack: list[str] = []
-    out: list[str] = []
+    # Walk forward tracking bracket depth. Ignore brackets inside strings.
+    depth = 0
     in_str = False
-    esc = False
-    for ch in s:
-        if in_str:
-            out.append(ch)
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
+    escape = False
+    end = -1
+    for i, ch in enumerate(candidate[start:], start=start):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
             continue
         if ch == '"':
-            in_str = True
-            out.append(ch)
-        elif ch in "[{":
-            stack.append(ch)
-            out.append(ch)
-        elif ch == "]":
-            if stack and stack[-1] == "[":
-                stack.pop()
-                out.append(ch)
-            # else: drop this mismatched closer
-        elif ch == "}":
-            if stack and stack[-1] == "{":
-                stack.pop()
-                out.append(ch)
-            # else: drop this mismatched closer
-        else:
-            out.append(ch)
-    return "".join(out)
-
-
-def _repair_truncated_json(s: str) -> str:
-    """Close unbalanced strings/brackets/braces at the tail of `s`.
-
-    Handles the common failure mode where max_new_tokens truncates the model's
-    reply mid-object. Walks the string once, tracking the open-bracket stack,
-    then appends matching closers in reverse. Trailing commas are stripped
-    before closing. Does not touch valid input.
-    """
-    stack: list[str] = []
-    in_str = False
-    esc = False
-    last_non_ws = 0
-    for i, ch in enumerate(s):
+            in_str = not in_str
+            continue
         if in_str:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end < 0:
+        return None, "unterminated JSON array (truncated?)"
+
+    return candidate[start:end + 1], None
+
+
+# --------------------------------------------------------------- main
+
+def parse_edits(text: str) -> ParseResult:
+    result = ParseResult()
+    array_text, err = _extract_json_array(text)
+    if err is not None:
+        result.parse_error = err
+        return result
+
+    try:
+        raw = json.loads(array_text)
+    except json.JSONDecodeError as e:
+        result.parse_error = f"JSON decode error: {e.msg} at pos {e.pos}"
+        return result
+
+    if not isinstance(raw, list):
+        result.parse_error = f"top-level JSON is not a list, got {type(raw).__name__}"
+        return result
+
+    for i, item in enumerate(raw):
+        edit, err = parse_edit(item)
+        if edit is not None:
+            result.edits.append(edit)
         else:
-            if ch == '"':
-                in_str = True
-            elif ch in "[{":
-                stack.append(ch)
-            elif ch == "]" and stack and stack[-1] == "[":
-                stack.pop()
-            elif ch == "}" and stack and stack[-1] == "{":
-                stack.pop()
-        if not ch.isspace():
-            last_non_ws = i
-    if not stack and not in_str:
-        return s
-    out = s[: last_non_ws + 1]
-    if in_str:
-        # If we truncated inside a string with a dangling backslash, drop it.
-        if out.endswith("\\"):
-            out = out[:-1]
-        out += '"'
-    # Drop a trailing comma or partial key like `,\n  "` before closing.
-    out = re.sub(r",\s*$", "", out)
-    out = re.sub(r',\s*"[^"]*$', "", out)
-    for opener in reversed(stack):
-        out += "]" if opener == "[" else "}"
-    return out
+            result.edit_errors.append(f"edit[{i}]: {err}")
 
-
-def parse_edits(completion: str) -> ParseResult:
-    body = _strip_fences(completion)
-    # Strip trailing commas which small models emit constantly.
-    body_clean = _TRAILING_COMMA_RE.sub(r"\1", body)
-    body_dropmis = _drop_mismatched_closers(body_clean)
-    candidates = [
-        body,
-        body_clean,
-        _first_json_object(body) or "",
-        _first_json_object(body_clean) or "",
-        _repair_truncated_json(body_clean),
-        body_dropmis,
-        _repair_truncated_json(body_dropmis),
-        _first_json_object(body_dropmis) or "",
-    ]
-    last_err = "no JSON found"
-    seen: set[str] = set()
-    for candidate in candidates:
-        if not candidate or candidate in seen:
-            continue
-        seen.add(candidate)
-        try:
-            data = json.loads(candidate)
-        except json.JSONDecodeError as e:
-            last_err = f"json.loads: {e}"
-            continue
-        if isinstance(data, list):  # tolerate bare list, wrap in {"edits": ...}
-            data = {"edits": data}
-        elif isinstance(data, dict) and "op" in data and "edits" not in data:
-            # A single edit dict — wrap so it's not silently dropped.
-            data = {"edits": [data]}
-        elif not (isinstance(data, dict) and "edits" in data):
-            # Missing the top-level "edits" key — reject rather than let
-            # pydantic silently produce an empty EditList (extras are ignored).
-            last_err = "top-level object has no 'edits' key"
-            continue
-        try:
-            return ParseResult(EditList.model_validate(data), True)
-        except ValidationError as e:
-            last_err = str(e)
-            continue
-    return ParseResult(
-        EditList(edits=[]), False,
-        error=f"could not parse edits from completion: {last_err}",
-    )
+    return result
