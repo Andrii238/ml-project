@@ -1,11 +1,19 @@
-# Colab install list. bitsandbytes is intentionally OMITTED — Colab's
-# preinstalled triton version breaks bitsandbytes' cuda binary, and
-# transformers.integrations.bitsandbytes then errors on any transformers import.
-# We use bf16 (not 4-bit) on T4; the 1.5B model fits comfortably.
+# Colab install list.
+#
+# NOTES:
+# - bitsandbytes is OMITTED — Colab's triton version breaks its CUDA binary
+#   and transformers.integrations.bitsandbytes errors on any transformers import.
+#   We use bf16 (not 4-bit).
+# - vllm, mergekit, llm_blender are REQUIRED because trl's GRPOTrainer
+#   hard-imports them (transitively via callbacks). Even if we set
+#   use_vllm=False, the imports run at module load. All three must be present.
+
 transformers==4.46.3
-trl==0.12.2
+trl==0.15.2
 peft==0.13.2
 accelerate==1.1.1
 datasets==3.1.0
-torch>=2.4          # Colab ships with a compatible torch already
+vllm==0.6.6
+mergekit
+llm_blender
 pydantic>=2.7
