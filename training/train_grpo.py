@@ -45,7 +45,7 @@ class GRPOConfig:
     lora_alpha: int = 32
     lora_dropout: float = 0.05
 
-    load_in_4bit: bool = True
+    load_in_4bit: bool = False   # Colab bitsandbytes often broken; bf16 fits on T4
     seed: int = 42
 
 

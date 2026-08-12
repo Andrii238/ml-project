@@ -68,7 +68,7 @@ def evaluate_checkpoints(specs: list[dict[str, Any]], *,
         pol = QwenPolicy(
             model_name=model_name or DEFAULT_MODEL,
             adapter_path=spec.get("adapter"),
-            load_in_4bit=spec.get("load_in_4bit", True),
+            load_in_4bit=spec.get("load_in_4bit", False),
         )
         summary = evaluate_policy(
             pol.generate, prompts, seeds=seeds,

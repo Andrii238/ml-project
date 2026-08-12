@@ -30,7 +30,7 @@ DEFAULT_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 class QwenPolicy:
     model_name: str = DEFAULT_MODEL
     adapter_path: str | None = None    # peft LoRA adapter, if any
-    load_in_4bit: bool = False
+    load_in_4bit: bool = False         # Colab bitsandbytes often broken; bf16 fits 1.5B on T4
     device: str = "cuda"
     dtype: str = "bfloat16"            # or "float16" / "float32"
 
