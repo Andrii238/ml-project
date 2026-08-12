@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from harness.evaluator import EvalSummary, evaluate_policy
-from harness.qwen_policy import QwenPolicy
+from harness.qwen_policy import DEFAULT_MODEL, QwenPolicy
 from training.data import val_samples
 
 
@@ -66,7 +66,7 @@ def evaluate_checkpoints(specs: list[dict[str, Any]], *,
     results: list[CheckpointResult] = []
     for spec in specs:
         pol = QwenPolicy(
-            model_name=(model_name or QwenPolicy.model_name.__get__(QwenPolicy())),
+            model_name=model_name or DEFAULT_MODEL,
             adapter_path=spec.get("adapter"),
             load_in_4bit=spec.get("load_in_4bit", True),
         )
