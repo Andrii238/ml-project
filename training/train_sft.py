@@ -69,7 +69,7 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
 
     import torch
     from peft import LoraConfig
-    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM
     from trl import SFTConfig as TRLSFTConfig, SFTTrainer
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
@@ -79,6 +79,7 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
     model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16,
                                      "device_map": "auto"}
     if config.load_in_4bit:
+        from transformers import BitsAndBytesConfig  # lazy — Colab's bitsandbytes may be broken
         model_kwargs["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.bfloat16,

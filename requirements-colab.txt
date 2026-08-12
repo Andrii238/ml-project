@@ -1,9 +1,10 @@
-# Colab install list — mirrors [llm] extra in pyproject.toml with pinned versions
-# for reproducibility. Run: `pip install -r requirements-colab.txt`.
+# Colab install list. bitsandbytes is intentionally OMITTED — Colab's
+# preinstalled triton version breaks bitsandbytes' cuda binary, and
+# transformers.integrations.bitsandbytes then errors on any transformers import.
+# We use bf16 (not 4-bit) on T4; the 1.5B model fits comfortably.
 transformers==4.46.3
 trl==0.12.2
 peft==0.13.2
-bitsandbytes==0.44.1
 accelerate==1.1.1
 datasets==3.1.0
 torch>=2.4          # Colab ships with a compatible torch already
