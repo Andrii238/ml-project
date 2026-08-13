@@ -98,7 +98,7 @@ def render_entity_list(layout: Layout) -> str:
 SYSTEM_MESSAGE = (
     "You design a factory layout to produce green science packs. "
     "You emit JSON edits that place entities on a 20x20 grid. "
-    "Follow the schema exactly. Use no more than 100 edits. "
+    "Follow the schema exactly. Use no more than 15 edits. "
     "Reply with the JSON array only, no prose."
 )
 
@@ -140,6 +140,10 @@ EDIT_VOCAB_SUMMARY = (
     "  {\"op\":\"place_conveyor_line\", \"tier\":1|2|3, \"from_x\":int, \"from_y\":int,"
     " \"to_x\":int, \"to_y\":int, \"id\":str} for one straight horizontal/vertical belt line. "
     "The endpoints are excluded; conveyor direction is inferred from from->to.\n"
+    "Conveyor-line rules: use one line per straight route; do not split one route into repeated sub-lines. "
+    "Never output a line where from_x/from_y equals to_x/to_y. "
+    "A complete bus factory usually needs exactly five conveyor-line edits: output trunk, output bus, "
+    "belt-input trunk, inserter-input trunk, and input bus.\n"
 )
 
 
@@ -147,7 +151,7 @@ GOAL_MESSAGE = (
     "Goal: use the existing chests, then place assemblers and conveyors so green-science packs "
     "flow from producing assemblers to the output-science chest. Maximizing delivered rate "
     "of green science to the output chest is the main and most important objective. "
-    "Higher tiers cost more and unlock a one-time penalty. Use no more than 100 edits.\n"
+    "Higher tiers cost more and unlock a one-time penalty. Use no more than 15 edits.\n"
 )
 
 

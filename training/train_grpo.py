@@ -33,7 +33,7 @@ class GRPOConfig:
     # GRPO hyperparameters
     num_generations: int = 8            # G — group size
     temperature: float = 0.8
-    max_new_tokens: int = 1024
+    max_new_tokens: int = 512
     max_prompt_length: int | None = None
     beta: float = 0.04
     learning_rate: float = 5e-5
@@ -160,7 +160,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--output-dir", default="./ckpts/grpo")
     ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=8)
     ap.add_argument("--temperature", type=float, default=0.8)
-    ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=1024)
+    ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=512)
     ap.add_argument("--max-prompt-length", type=int, default=None)
     ap.add_argument("--beta", type=float, default=0.04)
     ap.add_argument("--learning-rate", type=float, default=5e-5)

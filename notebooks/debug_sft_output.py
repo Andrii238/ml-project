@@ -21,8 +21,8 @@ def main() -> None:
     def gen(prompts, **_kwargs):
         outs = policy.generate(
             prompts,
-            max_new_tokens=4096,
-            temperature=0.2,
+            max_new_tokens=512,
+            temperature=0.0,
             batch_size=1,
         )
         print("\nMODEL OUTPUT:")
@@ -35,8 +35,8 @@ def main() -> None:
         seeds=[row["seed"]],
         samples_per_prompt=1,
         batch_size=1,
-        max_new_tokens=4096,
-        temperature=0.2,
+        max_new_tokens=512,
+        temperature=0.0,
     )
 
     print("\nSUMMARY:")

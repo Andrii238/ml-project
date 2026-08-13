@@ -61,8 +61,8 @@ def evaluate_checkpoints(specs: list[dict[str, Any]], *,
                           samples_per_layout: int = 4,
                           model_name: str | None = None,
                           batch_size: int = 4,
-                          max_new_tokens: int = 1024,
-                          temperature: float = 0.8,
+                          max_new_tokens: int = 512,
+                          temperature: float = 0.0,
                           n_val: int | None = None) -> list[CheckpointResult]:
     val = val_samples()
     if n_val is not None:
@@ -129,8 +129,8 @@ def _main() -> int:
     ap.add_argument("--n-val", type=int, default=20)
     ap.add_argument("--model-name", default=DEFAULT_MODEL)
     ap.add_argument("--batch-size", type=int, default=4)
-    ap.add_argument("--max-new-tokens", type=int, default=1024)
-    ap.add_argument("--temperature", type=float, default=0.8)
+    ap.add_argument("--max-new-tokens", type=int, default=512)
+    ap.add_argument("--temperature", type=float, default=0.0)
     ap.add_argument("--out", default="results/eval.json")
     args = ap.parse_args()
 
