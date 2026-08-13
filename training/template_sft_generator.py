@@ -464,85 +464,9 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
     return None
 
 
-def _build_compact_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
-    """Compact direct 2-assembler hub.
-
-    These examples intentionally start from well-placed chests and ask for
-    assemblers/conveyors, so the model learns high-output production patterns
-    instead of only routing.
-    """
-    rng = random.Random(seed * 1777 + variant * 313 + 99)
-    tiers = _choose_tiers(rng, 2)
-    orientation = rng.choice(("horizontal", "vertical"))
-    rates = sample_chest_rates(rng)
-
-    if orientation == "horizontal":
-        x = rng.randint(2, 8)
-        y = rng.randint(2, 15)
-        chests = [
-            Chest(id="chest_input-belts", kind="input-belts", x=x + 4, y=y + 1),
-            Chest(id="chest_input-inserters", kind="input-inserters", x=x + 4, y=y),
-            Chest(id="chest_output-science", kind="output-science", x=x + 4, y=y + 2),
-        ]
-        assemblers = [
-            _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y),
-            _AsmSpec(id="gen_a2", tier=tiers[1], x=x + 6, y=y),
-        ]
-        edits = [
-            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
-            {"op": "place_assembler", "id": "gen_a2", "tier": tiers[1], "x": x + 6, "y": y},
-            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x + 3, "y": y + 1, "direction": "west"},
-            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 5, "y": y + 1, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x + 3, "y": y, "direction": "west"},
-            {"op": "place_conveyor", "id": "gen_c4", "tier": 1, "x": x + 5, "y": y, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c5", "tier": 1, "x": x + 3, "y": y + 2, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c6", "tier": 1, "x": x + 5, "y": y + 2, "direction": "west"},
-        ]
-    else:
-        x = rng.randint(2, 15)
-        y = rng.randint(2, 8)
-        chests = [
-            Chest(id="chest_input-belts", kind="input-belts", x=x + 1, y=y + 4),
-            Chest(id="chest_input-inserters", kind="input-inserters", x=x, y=y + 4),
-            Chest(id="chest_output-science", kind="output-science", x=x + 2, y=y + 4),
-        ]
-        assemblers = [
-            _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y),
-            _AsmSpec(id="gen_a2", tier=tiers[1], x=x, y=y + 6),
-        ]
-        edits = [
-            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
-            {"op": "place_assembler", "id": "gen_a2", "tier": tiers[1], "x": x, "y": y + 6},
-            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x + 1, "y": y + 3, "direction": "north"},
-            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 1, "y": y + 5, "direction": "south"},
-            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x, "y": y + 3, "direction": "north"},
-            {"op": "place_conveyor", "id": "gen_c4", "tier": 1, "x": x, "y": y + 5, "direction": "south"},
-            {"op": "place_conveyor", "id": "gen_c5", "tier": 1, "x": x + 2, "y": y + 3, "direction": "south"},
-            {"op": "place_conveyor", "id": "gen_c6", "tier": 1, "x": x + 2, "y": y + 5, "direction": "north"},
-        ]
-
-    initial = Layout(grid_size=grid, chest_rates=rates, chests=chests)
-    typed = []
-    for raw in edits:
-        e, err = parse_edit(raw)
-        if e is None:
-            return None
-        typed.append(e)
-    applied = apply_edits(initial, typed)
-    if applied.errors or applied.applied != len(typed):
-        return None
-    sim = simulate(applied.layout)
-    if sim.green_science_rate <= 0:
-        return None
-    return GeneratedPair(
-        seed=seed,
-        prompt=build_user_message(initial),
-        completion=json.dumps(edits, separators=(",", ":")),
-        sim_gs_rate=sim.green_science_rate,
-        n_assemblers=2,
-        tiers=tuple(a.tier for a in assemblers),
-        mode="full",
-    )
+def _build_small_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Small 1-2 assembler clustered-chest bus template."""
+    return _build_bus_full_pair(seed, variant, min_assemblers=1, max_assemblers=2, grid=grid)
 
 
 def _transform_direction(direction: Direction, *, mirror_x: bool, mirror_y: bool, transpose: bool) -> Direction:
@@ -615,8 +539,8 @@ def _transform_layout_and_edits(initial: Layout, edits: list[dict], *, rng: rand
     return out_initial, out_edits
 
 
-def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
-    """Large 3-8 assembler bus template.
+def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_assemblers: int, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Clustered-chest assembler bus template.
 
     The template keeps all chests in the same corner/side region and builds a
     compact assembler block around shared buses:
@@ -626,7 +550,7 @@ def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int]
     - one or two shared output buses carry science to the output chest.
     """
     rng = random.Random(seed * 3253 + variant * 2017 + 503)
-    n_assemblers = rng.randint(3, 8)
+    n_assemblers = rng.randint(min_assemblers, max_assemblers)
     rows = 1 if n_assemblers <= 4 else 2
     cols = math.ceil(n_assemblers / rows)
     x0 = 4
@@ -643,8 +567,8 @@ def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int]
 
     chests = [
         Chest(id="chest_output-science", kind="output-science", x=0, y=0),
-        Chest(id="chest_input-belts", kind="input-belts", x=2, y=input_bus_y),
-        Chest(id="chest_input-inserters", kind="input-inserters", x=3, y=input_bus_y - 2),
+        Chest(id="chest_input-belts", kind="input-belts", x=2, y=0),
+        Chest(id="chest_input-inserters", kind="input-inserters", x=3, y=0),
     ]
     if len({(c.x, c.y) for c in chests}) != 3:
         return None
@@ -678,11 +602,12 @@ def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int]
         for y in range(1, max(output_ys) + 1):
             add_cv(0, y, "north")
 
-        # Shared input bus. Belt chest feeds first bus tile from the west;
-        # inserter chest feeds same bus tile from above. The bus then carries
-        # both items on its two lanes past all assemblers.
-        add_cv(3, input_bus_y - 1, "south")
-        for x in range(3, max_x + 1):
+        # Shared input bus. Both input chests start in the corner and feed
+        # short vertical trunks that merge into the horizontal two-lane bus.
+        for y in range(1, input_bus_y):
+            add_cv(2, y, "south")
+            add_cv(3, y, "south")
+        for x in range(2, max_x + 1):
             add_cv(x, input_bus_y, "east")
 
         # Output buses. The relaxed simulator rule lets assemblers output onto
@@ -720,6 +645,11 @@ def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int]
         tiers=tuple(a.tier for a in assemblers),
         mode="full",
     )
+
+
+def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Large 3-8 assembler clustered-chest bus template."""
+    return _build_bus_full_pair(seed, variant, min_assemblers=3, max_assemblers=8, grid=grid)
 
 
 def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> GeneratedPair | None:
@@ -789,42 +719,52 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
 
 
 def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
-    """Return a balanced set for one seed.
+    """Return clustered-chest examples for one seed.
 
-    For the default 8 variants:
-    - random-chest full build,
-    - random-chest partial repair,
-    - compact 2-assembler full build,
-    - compact 2-assembler partial repair,
-    - two large 3-8 assembler bus full builds,
-    - two large 3-8 assembler bus partial repairs.
+    For the active 8 variants, all examples use the locked task distribution:
+    chests clustered in one corner/side, model places assemblers/conveyors only.
+    Target mix per seed:
+    - 1 small 1-2 assembler full/partial pair,
+    - 3 large 3-8 assembler full/partial pairs.
+    Large target sizes are cycled deterministically so the dataset covers 3-8.
     """
     out: list[GeneratedPair] = []
 
-    def add_pair(full: GeneratedPair | None, variant: int) -> None:
+    def add_pair(full: GeneratedPair | None, variant: int) -> bool:
         if full is None:
-            return
-        out.append(full)
+            return False
         partial = _partial_from_full(full, seed, variant)
-        if partial is not None:
-            out.append(partial)
+        if partial is None:
+            return False
+        out.extend([full, partial])
+        return True
+
+    targets = [
+        (1 + (seed % 2), "small"),
+        (3 + (seed % 6), "large"),
+        (3 + ((seed + 2) % 6), "large"),
+        (3 + ((seed + 4) % 6), "large"),
+    ]
 
     variant = 0
-    attempts = 0
-    while len(out) < variants and attempts < 100:
-        attempts += 1
-        if len(out) < variants:
-            add_pair(_build_full_pair(seed, variant), variant + 1)
+    for n_assemblers, kind in targets:
+        if len(out) >= variants:
+            break
+        made = False
+        for _ in range(300):
+            full = _build_bus_full_pair(
+                seed,
+                variant,
+                min_assemblers=n_assemblers,
+                max_assemblers=n_assemblers,
+            )
+            if add_pair(full, variant + 1):
+                made = True
+                variant += 2
+                break
             variant += 2
-        if len(out) < variants:
-            add_pair(_build_compact_full_pair(seed, variant), variant + 1)
-            variant += 2
-        if len(out) < variants:
-            add_pair(_build_large_bus_full_pair(seed, variant), variant + 1)
-            variant += 2
-        if len(out) < variants:
-            add_pair(_build_large_bus_full_pair(seed, variant), variant + 1)
-            variant += 2
+        if not made and kind == "small":
+            continue
 
     return [
         {

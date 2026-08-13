@@ -56,6 +56,14 @@ Model can place asm-1, asm-2, or asm-3.
 - **Obstacles: OPEN QUESTION.** User leaning include, not decided.
 - **Grid size: TBD.**
 
+
+### Locked task distribution (2026-08-13)
+- Active SFT/eval task distribution is **clustered chests only**: the three required chests are placed together in one corner/side cluster. Chest spread is intentionally small.
+- The model-facing action space is **building-only**: `place_assembler` and `place_conveyor`. No `move_entity`; no model-facing chest placement/removal.
+- Active SFT generator uses clustered bus templates only: small 1-2 assembler examples plus large 3-8 assembler examples, each with full-build and partial-build variants.
+- Older random-chest/remote-output generators remain in code only as reference helpers; they are not part of the active SFT dataset.
+- Smoke eval must use the same clustered-chest distribution as SFT.
+
 ### Locked decisions (2026-08-12)
 1. **Grid size:** 20x20 (fixed across episodes).
 2. **Obstacles:** none.
@@ -71,7 +79,7 @@ Model can place asm-1, asm-2, or asm-3.
 
 ## Implementation status (2026-08-12)
 
-Seven-chunk rewrite executed under the simplified spec. **All 91 unit tests pass.** No live FLE validation yet.
+Seven-chunk rewrite executed under the simplified spec. Current local test count: **93 unit tests pass.** No live FLE validation yet.
 
 ### Chunk 1 — data types (`mini_factorio/entities.py`, `mini_factorio/layout.py`)
 - Chest kinds: `input-belts`, `input-inserters`, `output-science` (1×1 each).
@@ -85,7 +93,7 @@ Seven-chunk rewrite executed under the simplified spec. **All 91 unit tests pass
 - Rate-based fixed-point solver. Nodes: chests, conveyors, assemblers.
 - Chest emission divided equally among adjacent conveyors that point away from the chest.
 - Conveyor propagation: upstream conveyors + assembler outputs added to per-item flow. Same-tile perpendicular crossings tracked per conveyor id (each keeps its own lanes).
-- Assembler consumption from conveyors whose `downstream_tile` is on the footprint; output to conveyors whose `upstream_tile` is on the footprint.
+- Assembler consumes required inputs from any adjacent conveyor carrying them. Assembler outputs science to adjacent conveyors that are empty or already carrying science.
 - Assembler rate: `min(crafting_rate, belts_in, inserters_in)` crafts/sec.
 - 2-lane cap enforced per tile with per-tier capacity.
 - 7 sim tests: empty layout, all three tiers, both bottleneck directions, missing output chest, broken output path, perpendicular crossing preserves flow.

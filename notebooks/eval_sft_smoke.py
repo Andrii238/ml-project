@@ -7,22 +7,18 @@ from harness.evaluator import evaluate_policy
 from harness.qwen_policy import QwenPolicy
 from training.data import VAL_SEEDS
 from training.evaluate import CheckpointResult, save_results, rows_to_table
-from training.template_sft_generator import _build_large_bus_full_pair
+from training.template_sft_generator import build_template_dataset
 
 os.makedirs("results", exist_ok=True)
 
-# Smoke eval intentionally uses the locked structured task distribution:
-# all chests are clustered near one corner/side and the target pattern is a
-# compact multi-assembler bus. This is the first check before full eval/GRPO.
-rows = []
-for i, seed in enumerate(VAL_SEEDS[:2]):
-    pair = _build_large_bus_full_pair(seed, variant=i)
-    if pair is None:
-        raise RuntimeError(f"failed to build large-bus smoke pair for seed={seed}")
-    rows.append({"seed": pair.seed, "prompt": pair.prompt, "target_rate": pair.sim_gs_rate})
+# Smoke eval intentionally uses the same locked structured distribution as SFT:
+# all chests are clustered in one corner/side and the model only places
+# assemblers/conveyors. Use 4 examples: small full/partial + large full/partial.
+rows = build_template_dataset(VAL_SEEDS[:1], variants_per_seed=4)
 prompts = [r["prompt"] for r in rows]
 seeds = [r["seed"] for r in rows]
-print("smoke target rates:", [round(r["target_rate"], 4) for r in rows])
+print("smoke target rates:", [round(r["sim_gs_rate"], 4) for r in rows])
+print("smoke target assemblers:", [r["n_assemblers"] for r in rows])
 
 specs = [
     {"name": "policy_0", "adapter": None},
@@ -61,4 +57,4 @@ table = [{
     "machines": round(c["mean_machines"], 2),
 } for c in d]
 print(pd.DataFrame(table).set_index("ckpt").to_string())
-print("Smoke purpose: quick locked-distribution check that SFT can produce valid productive large-bus layouts.")
+print("Smoke purpose: quick locked-distribution check that SFT can produce valid productive clustered-chest layouts.")
