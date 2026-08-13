@@ -585,39 +585,38 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
         edits.append({"op": "place_assembler", "id": a.id, "tier": a.tier,
                       "x": a.x, "y": a.y})
 
-    conv_keys: set[tuple[int, int, Direction]] = set()
+    line_keys: set[tuple[int, int, int, int]] = set()
 
-    def add_cv(x: int, y: int, d: Direction, *, tier: int = 1) -> None:
-        if not _in_bounds((x, y), grid):
-            raise ValueError("conveyor out of bounds")
-        key = (x, y, d)
-        if key in conv_keys:
+    def add_line(from_x: int, from_y: int, to_x: int, to_y: int, *, tier: int = 1) -> None:
+        if not _in_bounds((from_x, from_y), grid) or not _in_bounds((to_x, to_y), grid):
+            raise ValueError("conveyor line endpoint out of bounds")
+        if from_x != to_x and from_y != to_y:
+            raise ValueError("conveyor line must be straight")
+        if from_x == to_x and from_y == to_y:
+            raise ValueError("conveyor line must be nonzero")
+        key = (from_x, from_y, to_x, to_y)
+        if key in line_keys:
             return
-        conv_keys.add(key)
-        edits.append({"op": "place_conveyor", "id": f"gen_c{len(conv_keys)}",
-                      "tier": tier, "x": x, "y": y, "direction": d})
+        line_keys.add(key)
+        edits.append({"op": "place_conveyor_line", "id": f"gen_l{len(line_keys)}",
+                      "tier": tier, "from_x": from_x, "from_y": from_y,
+                      "to_x": to_x, "to_y": to_y})
 
     try:
         # Output trunk from row output buses to output chest at (0,0).
-        for y in range(1, max(output_ys) + 1):
-            add_cv(0, y, "north")
+        add_line(0, max(output_ys) + 1, 0, 0)
 
         # Output buses. The relaxed simulator rule lets assemblers output onto
         # adjacent empty/science conveyors, so west-flowing buses beside each row
         # collect science directly and carry it into the output trunk.
         for y in output_ys:
-            for x in range(1, max_x + 1):
-                add_cv(x, y, "west")
+            add_line(max_x + 1, y, 0, y)
 
         # Shared input bus. Both input chests start in the corner and feed
         # short vertical trunks that merge into the horizontal two-lane bus.
-        # This comes after output routing so truncated generations are more
-        # likely to include the delivery path.
-        for y in range(1, input_bus_y):
-            add_cv(2, y, "south")
-            add_cv(3, y, "south")
-        for x in range(2, max_x + 1):
-            add_cv(x, input_bus_y, "east")
+        add_line(2, 0, 2, input_bus_y)
+        add_line(3, 0, 3, input_bus_y)
+        add_line(1, input_bus_y, max_x + 1, input_bus_y)
     except ValueError:
         return None
 
@@ -668,12 +667,12 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
     rng = random.Random(seed * 811 + variant * 1193 + 42)
     raw_edits = json.loads(pair.completion)
     asm_idx = [i for i, e in enumerate(raw_edits) if e["op"] == "place_assembler"]
-    conv_idx = [i for i, e in enumerate(raw_edits) if e["op"] == "place_conveyor"]
+    conv_idx = [i for i, e in enumerate(raw_edits) if e["op"] == "place_conveyor_line"]
     if not asm_idx:
         return None
 
     n_del_asm = rng.randint(1, min(5, len(asm_idx)))
-    n_del_conv = rng.randint(0, min(10, len(conv_idx)))
+    n_del_conv = rng.randint(0, min(3, len(conv_idx)))
     deleted_idx = set(rng.sample(asm_idx, n_del_asm))
     if n_del_conv > 0:
         deleted_idx.update(rng.sample(conv_idx, n_del_conv))

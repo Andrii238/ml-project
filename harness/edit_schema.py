@@ -1,9 +1,10 @@
 """Pydantic schema for LLM edit outputs (simplified env).
 
-Four edit types:
+Five edit types:
 - place_chest      {op, kind, x, y, id}
 - place_assembler  {op, tier, x, y, id}
 - place_conveyor   {op, tier, x, y, direction, id}
+- place_conveyor_line {op, tier, from_x, from_y, to_x, to_y, id}
 - remove_entity    {op, id}
 
 `parse_edit(dict)` normalizes a raw dict into a typed model. `edits_from_json`
@@ -43,17 +44,28 @@ class PlaceConveyor(BaseModel):
     direction: Direction
 
 
+class PlaceConveyorLine(BaseModel):
+    op: Literal["place_conveyor_line"] = "place_conveyor_line"
+    id: str
+    tier: ConveyorTier
+    from_x: int
+    from_y: int
+    to_x: int
+    to_y: int
+
+
 class RemoveEntity(BaseModel):
     op: Literal["remove_entity"] = "remove_entity"
     id: str
 
 
-Edit = Union[PlaceChest, PlaceAssembler, PlaceConveyor, RemoveEntity]
+Edit = Union[PlaceChest, PlaceAssembler, PlaceConveyor, PlaceConveyorLine, RemoveEntity]
 
 _EDIT_MODELS: dict[str, type[BaseModel]] = {
     "place_chest":     PlaceChest,
     "place_assembler": PlaceAssembler,
     "place_conveyor":  PlaceConveyor,
+    "place_conveyor_line": PlaceConveyorLine,
     "remove_entity":   RemoveEntity,
 }
 

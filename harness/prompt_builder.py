@@ -117,6 +117,8 @@ def _render_recipe_and_map_facts(layout: Layout) -> str:
         "Two conveyors may share a tile only if perpendicular (crossing).\n"
         "Required chests are already present: input-belts, input-inserters, and output-science. "
         "Do not place, remove, or duplicate required chests. Only add assemblers and conveyors.\n"
+        "In the active task, all required chests are fixed in the top-left corner: "
+        "output-science at (0,0), input-belts at (2,0), input-inserters at (3,0).\n"
         "Assemblers consume required inputs from any adjacent conveyor carrying them. "
         "Assemblers output science onto adjacent conveyors that are empty or already carrying science, not onto input conveyors carrying recipe ingredients. "
         "No inserter entity exists in this simplified environment.\n"
@@ -135,8 +137,9 @@ EDIT_VOCAB_SUMMARY = (
     "Edit vocabulary (details in schema):\n"
     "  {\"op\":\"place_assembler\", \"tier\":1|2|3, \"x\":int, \"y\":int, \"id\":str} "
     "where x,y are the 3x3 top-left anchor and must satisfy 0<=x<=17, 0<=y<=17\n"
-    "  {\"op\":\"place_conveyor\",  \"tier\":1|2|3, \"x\":int, \"y\":int,"
-    " \"direction\":\"north|south|east|west\", \"id\":str}\n"
+    "  {\"op\":\"place_conveyor_line\", \"tier\":1|2|3, \"from_x\":int, \"from_y\":int,"
+    " \"to_x\":int, \"to_y\":int, \"id\":str} for one straight horizontal/vertical belt line. "
+    "The endpoints are excluded; conveyor direction is inferred from from->to.\n"
 )
 
 

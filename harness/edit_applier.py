@@ -11,6 +11,8 @@ Rules enforced per edit:
 - `place_assembler`: id unique, 3x3 footprint in bounds and non-overlapping.
 - `place_conveyor`: id unique, tile in bounds. Overlap allowed only if the
   existing occupant is exactly one conveyor with a perpendicular direction.
+- `place_conveyor_line`: axis-aligned line; endpoints are excluded, direction
+  is inferred from start to end, and individual conveyors are placed.
 - `remove_entity`: id must reference an existing chest / assembler / conveyor.
 
 The applier does NOT enforce layout-level rules like "exactly one chest per
@@ -21,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from mini_factorio.entities import ASSEMBLERS, is_perpendicular
+from mini_factorio.entities import Direction
 from mini_factorio.layout import (
     Assembler,
     Chest,
@@ -33,6 +36,7 @@ from .edit_schema import (
     PlaceAssembler,
     PlaceChest,
     PlaceConveyor,
+    PlaceConveyorLine,
     RemoveEntity,
 )
 
@@ -125,6 +129,46 @@ def _apply_place_conveyor(lay: Layout, e: PlaceConveyor) -> str | None:
     return None
 
 
+def _direction_for_line(e: PlaceConveyorLine) -> Direction | None:
+    if e.from_x == e.to_x and e.from_y != e.to_y:
+        return "south" if e.to_y > e.from_y else "north"
+    if e.from_y == e.to_y and e.from_x != e.to_x:
+        return "east" if e.to_x > e.from_x else "west"
+    return None
+
+
+def _line_tiles(e: PlaceConveyorLine) -> list[tuple[int, int]]:
+    if e.from_x == e.to_x:
+        step = 1 if e.to_y > e.from_y else -1
+        return [(e.from_x, y) for y in range(e.from_y + step, e.to_y, step)]
+    step = 1 if e.to_x > e.from_x else -1
+    return [(x, e.from_y) for x in range(e.from_x + step, e.to_x, step)]
+
+
+def _apply_place_conveyor_line(lay: Layout, e: PlaceConveyorLine) -> str | None:
+    if any(i == e.id or i.startswith(f"{e.id}_") for i in _all_ids(lay)):
+        return f"place_conveyor_line id {e.id!r}: duplicate"
+    direction = _direction_for_line(e)
+    if direction is None:
+        return f"place_conveyor_line {e.id!r}: line must be straight and nonzero"
+    tiles = _line_tiles(e)
+    if not tiles:
+        return f"place_conveyor_line {e.id!r}: no interior tiles to place"
+
+    trial = Layout.from_dict(lay.to_dict())
+    for idx, (x, y) in enumerate(tiles, start=1):
+        err = _apply_place_conveyor(
+            trial,
+            PlaceConveyor(id=f"{e.id}_{idx}", tier=e.tier, x=x, y=y,
+                          direction=direction),
+        )
+        if err is not None:
+            return err.replace("place_conveyor", f"place_conveyor_line {e.id!r}")
+
+    lay.conveyors = trial.conveyors
+    return None
+
+
 def _apply_remove_entity(lay: Layout, e: RemoveEntity) -> str | None:
     before = len(lay.chests) + len(lay.assemblers) + len(lay.conveyors)
     lay.chests = [c for c in lay.chests if c.id != e.id]
@@ -142,6 +186,7 @@ _DISPATCH = {
     PlaceChest:     _apply_place_chest,
     PlaceAssembler: _apply_place_assembler,
     PlaceConveyor:  _apply_place_conveyor,
+    PlaceConveyorLine: _apply_place_conveyor_line,
     RemoveEntity:   _apply_remove_entity,
 }
 

@@ -58,11 +58,12 @@ Model can place asm-1, asm-2, or asm-3.
 
 
 ### Locked task distribution (2026-08-13)
-- Active SFT/eval task distribution is **clustered chests only**: the three required chests are placed together in one corner/side cluster. Chest spread is intentionally small.
-- The model-facing action space is **building-only**: `place_assembler` and `place_conveyor`. No `move_entity`; no model-facing chest placement/removal.
-- Active SFT generator uses clustered bus templates only: small 1-2 assembler examples plus large 3-8 assembler examples, each with full-build and partial-build variants.
+- Active SFT/eval task distribution is **fixed-chest only**: output-science is always at `(0,0)`, input-belts at `(2,0)`, and input-inserters at `(3,0)`.
+- The model-facing action space is **building-only**: `place_assembler` and `place_conveyor_line`. No `move_entity`; no model-facing chest placement/removal. `place_conveyor_line` names a straight horizontal/vertical belt route; endpoints are excluded and direction is inferred by the harness.
+- Active SFT generator uses fixed-chest bus templates only: small 1-2 assembler examples plus large 3-8 assembler examples, each with full-build and partial-build variants.
+- Conveyor placement is model-facing as straight line segments, but the harness expands each line into real conveyor tiles before applying, simulating, rewarding, and translating.
 - Older random-chest/remote-output generators remain in code only as reference helpers; they are not part of the active SFT dataset.
-- Smoke eval must use the same clustered-chest distribution as SFT.
+- Smoke eval must use the same fixed-chest distribution as SFT.
 
 ### Locked decisions (2026-08-12)
 1. **Grid size:** 20x20 (fixed across episodes).
@@ -108,7 +109,7 @@ Seven-chunk rewrite executed under the simplified spec. Current local test count
 
 ### Chunk 4 — random episodes (`mini_factorio/random_layouts.py`)
 - `sample_chest_rate(rng)` draws from `0.9·U(0,3) + 0.1·U(3,5)`.
-- `empty_episode(seed)` — 3 chests randomly placed, no other entities.
+- `empty_episode(seed)` — 3 fixed top-left chests, no other entities; seed changes input chest rates.
 - `partial_episode(seed)` — chests + up to 3 asm-1 + up to 15 T1 conveyors at random valid positions.
 - `sample_episodes(n, mode)` — batch with deterministic seeds.
 - 8 tests: rate bounds, ~10% high-bucket frequency (10k samples), 100-episode validation in both modes, seed determinism.
@@ -122,7 +123,7 @@ Seven-chunk rewrite executed under the simplified spec. Current local test count
 - 9 tests covering grid rendering, chest chars, tier display, crossing symbol, message sections, chat shape, rate precision.
 
 ### Chunk 6 — edit vocab + parser + applier (`harness/edit_schema.py`, `edit_parser.py`, `edit_applier.py`)
-- Main model-facing edit types: `place_assembler`, `place_conveyor`. The parser still supports `place_chest` and `remove_entity` internally, but current prompts/training do not ask the model to use them because required chests are pre-placed and the agreed action space is building-only.
+- Main model-facing edit types: `place_assembler`, `place_conveyor_line`. The parser still supports `place_chest`, single-tile `place_conveyor`, and `remove_entity` internally, but current prompts/training do not ask the model to use them because required chests are pre-placed and the agreed action space is building-only.
 - Parser tolerates: prose before/after, markdown code fences, per-item validation errors (partial edits survive). Detects truncated arrays.
 - Applier: deep-copies input, applies each edit in isolation, collects per-edit errors. Enforces bounds, ID uniqueness, non-overlap (with perpendicular-crossing exception).
 - 20 tests covering schema, parser edge cases (prose, fences, truncation, partial-valid), applier (add/remove, duplicates, out-of-bounds, footprint overlap, perpendicular crossing, immutability), one end-to-end parse→apply.
@@ -1024,4 +1025,3 @@ the gap via FLE spot-checks.
 - **Training layouts count** (60 train + 20 val): may increase/decrease based on training speed on Colab.
 - **GRPO group size** (G=8): may drop to 4 if VRAM tight on T4.
 - **Number of training iterations** (3): may add a 4th if time allows and improvement is still climbing.
-

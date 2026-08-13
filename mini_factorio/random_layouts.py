@@ -5,7 +5,7 @@ Per-episode chest emission rate: drawn from
 independently for the belts chest and the inserters chest.
 
 Two starting-layout modes:
-- `empty_episode(seed)`: only the three chests are placed (random positions).
+- `empty_episode(seed)`: only the three fixed top-left chests are placed.
   Model builds everything else from scratch. Used for the main training set.
 - `partial_episode(seed)`: chests + a few random valid conveyor/assembler
   placements pre-existing. Used to expose the model to edit-existing-layout
@@ -72,27 +72,24 @@ def _random_free_3x3_anchor(rng: random.Random, grid_size: tuple[int, int],
     return rng.choice(candidates)
 
 
-def _place_random_chests(lay: Layout, rng: random.Random) -> None:
-    """Place one chest of each kind at random free tiles."""
-    occupied: set[tuple[int, int]] = set()
-    for kind in CHEST_KINDS:
-        tile = _random_free_tile(rng, lay.grid_size, occupied)
-        if tile is None:
-            return
-        cid = f"chest_{kind}"
-        lay.chests.append(Chest(id=cid, kind=kind, x=tile[0], y=tile[1]))
-        occupied.add(tile)
+def _place_fixed_chests(lay: Layout) -> None:
+    """Place the active-task chests in fixed top-left positions."""
+    lay.chests = [
+        Chest(id="chest_output-science", kind="output-science", x=0, y=0),
+        Chest(id="chest_input-belts", kind="input-belts", x=2, y=0),
+        Chest(id="chest_input-inserters", kind="input-inserters", x=3, y=0),
+    ]
 
 
 # --------------------------------------------------------------- episodes
 
 def empty_episode(seed: int, grid_size: tuple[int, int] = DEFAULT_GRID) -> Layout:
-    """Layout with three chests at random positions and no other entities.
+    """Layout with three fixed top-left chests and no other entities.
 
     Chest rates are sampled per this episode."""
     rng = random.Random(seed)
     lay = Layout(grid_size=grid_size, chest_rates=sample_chest_rates(rng))
-    _place_random_chests(lay, rng)
+    _place_fixed_chests(lay)
     return lay
 
 

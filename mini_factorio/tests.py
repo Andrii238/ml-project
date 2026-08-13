@@ -43,6 +43,7 @@ from harness.edit_schema import (
     PlaceAssembler,
     PlaceChest,
     PlaceConveyor,
+    PlaceConveyorLine,
     RemoveEntity,
     parse_edit,
 )
@@ -589,6 +590,12 @@ def test_empty_episode_has_three_chests_no_other_entities():
     assert len(lay.conveyors) == 0
     kinds = {c.kind for c in lay.chests}
     assert kinds == {"input-belts", "input-inserters", "output-science"}
+    positions = {c.kind: (c.x, c.y) for c in lay.chests}
+    assert positions == {
+        "output-science": (0, 0),
+        "input-belts": (2, 0),
+        "input-inserters": (3, 0),
+    }
 
 
 def test_empty_episode_validates():
@@ -762,6 +769,13 @@ def test_parse_edit_bad_direction():
     assert e is None
 
 
+def test_parse_edit_conveyor_line():
+    e, err = parse_edit({"op": "place_conveyor_line", "id": "l", "tier": 1,
+                          "from_x": 0, "from_y": 0, "to_x": 0, "to_y": 4})
+    assert err is None
+    assert isinstance(e, PlaceConveyorLine)
+
+
 # ---- Parser
 
 def test_parse_edits_clean_json_array():
@@ -863,6 +877,29 @@ def test_apply_parallel_conveyor_stacking_rejected():
     assert r.applied == 1
     assert len(r.errors) == 1
     assert "perpendicular" in r.errors[0]
+
+
+def test_apply_conveyor_line_expands_direction_and_excludes_endpoints():
+    lay = Layout()
+    r = apply_edits(lay, [
+        PlaceConveyorLine(id="l", tier=1, from_x=0, from_y=0, to_x=0, to_y=4),
+    ])
+    assert r.applied == 1
+    assert r.errors == []
+    assert [(c.id, c.x, c.y, c.direction) for c in r.layout.conveyors] == [
+        ("l_1", 0, 1, "south"),
+        ("l_2", 0, 2, "south"),
+        ("l_3", 0, 3, "south"),
+    ]
+
+
+def test_apply_conveyor_line_rejects_diagonal():
+    lay = Layout()
+    r = apply_edits(lay, [
+        PlaceConveyorLine(id="l", tier=1, from_x=0, from_y=0, to_x=2, to_y=2),
+    ])
+    assert r.applied == 0
+    assert "straight" in r.errors[0]
 
 
 def test_apply_remove_entity_removes():
