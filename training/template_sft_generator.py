@@ -70,27 +70,60 @@ def _in_bounds(t: tuple[int, int], grid: tuple[int, int]) -> bool:
 
 
 def _paired_input_episode(seed: int, grid_size: tuple[int, int] = (20, 20)) -> Layout:
-    """Chest-only episode with input chests adjacent/near-adjacent and output
-    random. This keeps routing learnable while preserving varied locations."""
+    """Controlled chest-only episode.
+
+    Inputs are adjacent near one corner; output is near the opposite corner.
+    This reduces routing noise and focuses learning on productive factory edits.
+    """
     rng = random.Random(seed)
     lay = Layout(grid_size=grid_size, chest_rates=sample_chest_rates(rng))
     w, h = grid_size
 
-    bx = rng.randint(0, w - 1)
-    by = rng.randint(0, h - 1)
-    candidates = [(bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1)]
-    candidates = [t for t in candidates if _in_bounds(t, grid_size)]
-    if not candidates:
-        return empty_episode(seed, grid_size=grid_size)
-    ix, iy = rng.choice(candidates)
+    corners = {
+        "nw": (1, 1),
+        "ne": (w - 3, 1),
+        "sw": (1, h - 3),
+        "se": (w - 3, h - 3),
+    }
+    output_quadrant = {
+        "nw": (w // 2 + 2, h // 2 + 2),
+        "se": (w // 2 - 2, h // 2 - 2),
+        "ne": (w // 2 - 2, h // 2 + 2),
+        "sw": (w // 2 + 2, h // 2 - 2),
+    }
+    input_corner = rng.choice(tuple(corners))
 
-    occupied = {(bx, by), (ix, iy)}
-    out_choices = [(x, y) for x in range(w) for y in range(h) if (x, y) not in occupied]
-    ox, oy = rng.choice(out_choices)
+    ix0, iy0 = corners[input_corner]
+    ox0, oy0 = output_quadrant[input_corner]
+
+    # Small jitter keeps layouts varied without turning it into pathfinding chaos.
+    def jitter(base: tuple[int, int], radius: int = 2) -> tuple[int, int]:
+        x = min(max(base[0] + rng.randint(-radius, radius), 0), w - 1)
+        y = min(max(base[1] + rng.randint(-radius, radius), 0), h - 1)
+        return x, y
+
+    belt = jitter((ix0, iy0))
+    # Adjacent inserter chest if possible.
+    adj = [(belt[0] + 1, belt[1]), (belt[0] - 1, belt[1]),
+           (belt[0], belt[1] + 1), (belt[0], belt[1] - 1)]
+    adj = [t for t in adj if _in_bounds(t, grid_size)]
+    rng.shuffle(adj)
+    inserter = next((t for t in adj if t != belt), None)
+    if inserter is None:
+        return empty_episode(seed, grid_size=grid_size)
+
+    output = jitter((ox0, oy0), radius=3)
+    used = {belt, inserter}
+    # If jitter collides with inputs, move output to exact opposite corner fallback.
+    if output in used:
+        output = (ox0, oy0)
+    if output in used:
+        return empty_episode(seed, grid_size=grid_size)
+
     lay.chests = [
-        Chest(id="chest_input-belts", kind="input-belts", x=bx, y=by),
-        Chest(id="chest_input-inserters", kind="input-inserters", x=ix, y=iy),
-        Chest(id="chest_output-science", kind="output-science", x=ox, y=oy),
+        Chest(id="chest_input-belts", kind="input-belts", x=belt[0], y=belt[1]),
+        Chest(id="chest_input-inserters", kind="input-inserters", x=inserter[0], y=inserter[1]),
+        Chest(id="chest_output-science", kind="output-science", x=output[0], y=output[1]),
     ]
     return lay
 
@@ -431,6 +464,86 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
     return None
 
 
+def _build_compact_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Compact direct 2-assembler hub.
+
+    These examples intentionally place chests and assemblers in a good structure
+    so the model learns high-output production patterns instead of only routing.
+    """
+    rng = random.Random(seed * 1777 + variant * 313 + 99)
+    tiers = _choose_tiers(rng, 2)
+    orientation = rng.choice(("horizontal", "vertical"))
+    rates = sample_chest_rates(rng)
+
+    if orientation == "horizontal":
+        x = rng.randint(2, 8)
+        y = rng.randint(2, 15)
+        chests = [
+            Chest(id="chest_input-belts", kind="input-belts", x=x + 4, y=y + 1),
+            Chest(id="chest_input-inserters", kind="input-inserters", x=x + 4, y=y),
+            Chest(id="chest_output-science", kind="output-science", x=x + 4, y=y + 2),
+        ]
+        assemblers = [
+            _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y),
+            _AsmSpec(id="gen_a2", tier=tiers[1], x=x + 6, y=y),
+        ]
+        edits = [
+            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
+            {"op": "place_assembler", "id": "gen_a2", "tier": tiers[1], "x": x + 6, "y": y},
+            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x + 3, "y": y + 1, "direction": "west"},
+            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 5, "y": y + 1, "direction": "east"},
+            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x + 3, "y": y, "direction": "west"},
+            {"op": "place_conveyor", "id": "gen_c4", "tier": 1, "x": x + 5, "y": y, "direction": "east"},
+            {"op": "place_conveyor", "id": "gen_c5", "tier": 1, "x": x + 3, "y": y + 2, "direction": "east"},
+            {"op": "place_conveyor", "id": "gen_c6", "tier": 1, "x": x + 5, "y": y + 2, "direction": "west"},
+        ]
+    else:
+        x = rng.randint(2, 15)
+        y = rng.randint(2, 8)
+        chests = [
+            Chest(id="chest_input-belts", kind="input-belts", x=x + 1, y=y + 4),
+            Chest(id="chest_input-inserters", kind="input-inserters", x=x, y=y + 4),
+            Chest(id="chest_output-science", kind="output-science", x=x + 2, y=y + 4),
+        ]
+        assemblers = [
+            _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y),
+            _AsmSpec(id="gen_a2", tier=tiers[1], x=x, y=y + 6),
+        ]
+        edits = [
+            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
+            {"op": "place_assembler", "id": "gen_a2", "tier": tiers[1], "x": x, "y": y + 6},
+            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x + 1, "y": y + 3, "direction": "north"},
+            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 1, "y": y + 5, "direction": "south"},
+            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x, "y": y + 3, "direction": "north"},
+            {"op": "place_conveyor", "id": "gen_c4", "tier": 1, "x": x, "y": y + 5, "direction": "south"},
+            {"op": "place_conveyor", "id": "gen_c5", "tier": 1, "x": x + 2, "y": y + 3, "direction": "south"},
+            {"op": "place_conveyor", "id": "gen_c6", "tier": 1, "x": x + 2, "y": y + 5, "direction": "north"},
+        ]
+
+    initial = Layout(grid_size=grid, chest_rates=rates, chests=chests)
+    typed = []
+    for raw in edits:
+        e, err = parse_edit(raw)
+        if e is None:
+            return None
+        typed.append(e)
+    applied = apply_edits(initial, typed)
+    if applied.errors or applied.applied != len(typed):
+        return None
+    sim = simulate(applied.layout)
+    if sim.green_science_rate <= 0:
+        return None
+    return GeneratedPair(
+        seed=seed,
+        prompt=build_user_message(initial),
+        completion=json.dumps(edits, separators=(",", ":")),
+        sim_gs_rate=sim.green_science_rate,
+        n_assemblers=2,
+        tiers=tuple(a.tier for a in assemblers),
+        mode="full",
+    )
+
+
 def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> GeneratedPair | None:
     """Create a partial-repair sample by deleting entities from a verified
     full solution. The completion re-adds the deleted entities.
@@ -498,26 +611,35 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
 
 
 def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
-    target_full = variants // 2
-    target_partial = variants - target_full
-    full_rows: list[GeneratedPair] = []
-    partial_rows: list[GeneratedPair] = []
-    attempts = 0
-    variant = 0
-    while (len(full_rows) < target_full or len(partial_rows) < target_partial) and attempts < variants * 50:
-        attempts += 1
-        full = _build_full_pair(seed, variant)
-        variant += 1
+    """Return a balanced set for one seed.
+
+    For the default 4 variants:
+    - random-chest full build,
+    - random-chest partial repair,
+    - compact 2-assembler full build,
+    - compact 2-assembler partial repair.
+    """
+    out: list[GeneratedPair] = []
+
+    def add_pair(full: GeneratedPair | None, variant: int) -> None:
         if full is None:
-            continue
-        if len(full_rows) < target_full:
-            full_rows.append(full)
-        if len(partial_rows) < target_partial:
-            partial = _partial_from_full(full, seed, variant)
-            variant += 1
-            if partial is not None:
-                partial_rows.append(partial)
-    out = full_rows[:target_full] + partial_rows[:target_partial]
+            return
+        out.append(full)
+        partial = _partial_from_full(full, seed, variant)
+        if partial is not None:
+            out.append(partial)
+
+    variant = 0
+    attempts = 0
+    while len(out) < variants and attempts < 100:
+        attempts += 1
+        if len(out) < variants:
+            add_pair(_build_full_pair(seed, variant), variant + 1)
+            variant += 2
+        if len(out) < variants:
+            add_pair(_build_compact_full_pair(seed, variant), variant + 1)
+            variant += 2
+
     return [
         {
             "seed": p.seed,
@@ -528,7 +650,7 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
             "tiers": list(p.tiers),
             "mode": p.mode,
         }
-        for p in out
+        for p in out[:variants]
     ]
 
 
