@@ -351,46 +351,55 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
 
 
 def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> GeneratedPair | None:
+    """Create a partial-repair sample by deleting entities from a verified
+    full solution. The completion re-adds the deleted entities.
+
+    Deletion policy requested by Andrii:
+    - delete 1-5 assemblers, bounded by how many exist,
+    - delete 0-10 conveyors, bounded by how many exist.
+    """
     rng = random.Random(seed * 811 + variant * 1193 + 42)
     raw_edits = json.loads(pair.completion)
-    if len(raw_edits) < 8:
+    asm_idx = [i for i, e in enumerate(raw_edits) if e["op"] == "place_assembler"]
+    conv_idx = [i for i, e in enumerate(raw_edits) if e["op"] == "place_conveyor"]
+    if not asm_idx:
         return None
 
-    # Prefix includes assembler(s) plus some conveyors, completion finishes the factory.
-    min_cut = max(1, pair.n_assemblers)
-    max_cut = min(len(raw_edits) - 2, max(min_cut + 1, len(raw_edits) // 2))
-    if max_cut <= min_cut:
-        return None
-    cut = rng.randint(min_cut, max_cut)
-    prefix = raw_edits[:cut]
-    suffix = raw_edits[cut:]
-    if not suffix or len(suffix) > MAX_EDITS:
+    n_del_asm = rng.randint(1, min(5, len(asm_idx)))
+    n_del_conv = rng.randint(0, min(10, len(conv_idx)))
+    deleted_idx = set(rng.sample(asm_idx, n_del_asm))
+    if n_del_conv > 0:
+        deleted_idx.update(rng.sample(conv_idx, n_del_conv))
+
+    kept = [e for i, e in enumerate(raw_edits) if i not in deleted_idx]
+    deleted = [e for i, e in enumerate(raw_edits) if i in deleted_idx]
+    if not deleted or len(deleted) > MAX_EDITS:
         return None
 
-    # Recover initial layout from prompt envelope by using reward wrapper helper lazily.
     from training.reward_wrapper import layout_from_prompt
 
     initial = layout_from_prompt(pair.prompt)
     if initial is None:
         return None
-    typed_prefix = []
-    for raw in prefix:
+
+    typed_kept = []
+    for raw in kept:
         e, err = parse_edit(raw)
         if e is None:
             return None
-        typed_prefix.append(e)
-    partial = apply_edits(initial, typed_prefix)
+        typed_kept.append(e)
+    partial = apply_edits(initial, typed_kept)
     if partial.errors:
         return None
 
-    typed_suffix = []
-    for raw in suffix:
+    typed_deleted = []
+    for raw in deleted:
         e, err = parse_edit(raw)
         if e is None:
             return None
-        typed_suffix.append(e)
-    final = apply_edits(partial.layout, typed_suffix)
-    if final.errors or final.applied != len(typed_suffix):
+        typed_deleted.append(e)
+    final = apply_edits(partial.layout, typed_deleted)
+    if final.errors or final.applied != len(typed_deleted):
         return None
     sim = simulate(final.layout)
     if sim.green_science_rate <= 0:
@@ -399,7 +408,7 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
     return GeneratedPair(
         seed=seed,
         prompt=build_user_message(partial.layout),
-        completion=json.dumps(suffix, separators=(",", ":")),
+        completion=json.dumps(deleted, separators=(",", ":")),
         sim_gs_rate=sim.green_science_rate,
         n_assemblers=pair.n_assemblers,
         tiers=pair.tiers,
@@ -408,21 +417,26 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
 
 
 def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
-    out: list[GeneratedPair] = []
+    target_full = variants // 2
+    target_partial = variants - target_full
+    full_rows: list[GeneratedPair] = []
+    partial_rows: list[GeneratedPair] = []
     attempts = 0
     variant = 0
-    while len(out) < variants and attempts < variants * 30:
+    while (len(full_rows) < target_full or len(partial_rows) < target_partial) and attempts < variants * 50:
         attempts += 1
         full = _build_full_pair(seed, variant)
         variant += 1
         if full is None:
             continue
-        out.append(full)
-        if len(out) < variants:
+        if len(full_rows) < target_full:
+            full_rows.append(full)
+        if len(partial_rows) < target_partial:
             partial = _partial_from_full(full, seed, variant)
             variant += 1
             if partial is not None:
-                out.append(partial)
+                partial_rows.append(partial)
+    out = full_rows[:target_full] + partial_rows[:target_partial]
     return [
         {
             "seed": p.seed,
@@ -433,7 +447,7 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
             "tiers": list(p.tiers),
             "mode": p.mode,
         }
-        for p in out[:variants]
+        for p in out
     ]
 
 
