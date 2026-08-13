@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 
 from .edit_schema import Edit, parse_edit
 
+MAX_EDITS = 40
+
 
 @dataclass
 class ParseResult:
@@ -40,7 +42,8 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 def _extract_json_array(text: str) -> tuple[str | None, str | None]:
     """Return (array_text, error). Strips markdown fences and any prose
-    around the array. Truncated arrays are detected and reported."""
+    around the array. If generation stops mid-list, keep all complete objects
+    before the truncation and close the array."""
     # First strip markdown fences if present. Take the first fenced block.
     fenced = _FENCE_RE.findall(text)
     candidate = fenced[0] if fenced else text
@@ -74,9 +77,48 @@ def _extract_json_array(text: str) -> tuple[str | None, str | None]:
                 end = i
                 break
     if end < 0:
-        return None, "unterminated JSON array (truncated?)"
+        repaired = _repair_truncated_array(candidate[start:])
+        if repaired is None:
+            return None, "unterminated JSON array (truncated?)"
+        return repaired, None
 
     return candidate[start:end + 1], None
+
+
+def _repair_truncated_array(text: str) -> str | None:
+    """Build a valid JSON array from complete top-level objects in a truncated
+    array. This converts endless edit streams into a bounded candidate layout."""
+    objects: list[str] = []
+    depth = 0
+    in_str = False
+    escape = False
+    obj_start = -1
+    for i, ch in enumerate(text):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and obj_start >= 0:
+                objects.append(text[obj_start:i + 1])
+                if len(objects) >= MAX_EDITS:
+                    break
+                obj_start = -1
+    if not objects:
+        return None
+    return "[" + ",".join(objects[:MAX_EDITS]) + "]"
 
 
 # --------------------------------------------------------------- main
@@ -98,7 +140,7 @@ def parse_edits(text: str) -> ParseResult:
         result.parse_error = f"top-level JSON is not a list, got {type(raw).__name__}"
         return result
 
-    for i, item in enumerate(raw):
+    for i, item in enumerate(raw[:MAX_EDITS]):
         edit, err = parse_edit(item)
         if edit is not None:
             result.edits.append(edit)
