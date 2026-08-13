@@ -624,7 +624,10 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
     if len(edits) > MAX_EDITS:
         return None
 
-    initial, edits = _transform_layout_and_edits(initial, edits, rng=rng, grid=grid)
+    # Keep the active SFT task in one canonical orientation. Earlier random
+    # mirroring/transposing made the tiny model mix incompatible templates:
+    # valid JSON, but belts pointed to the wrong row/chest. We still vary
+    # assembler count, tiers, rates, and partial deletions.
 
     typed = []
     for raw in edits:

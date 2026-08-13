@@ -1,4 +1,5 @@
 from harness.evaluator import evaluate_policy
+from harness.prompt_builder import render_grid
 from harness.qwen_policy import QwenPolicy
 from training.reward_wrapper import layout_from_prompt, reward_breakdown
 from harness.edit_applier import apply_edits
@@ -59,7 +60,7 @@ def main() -> None:
             print("\nAPPLY ERRORS:")
             print(applied.errors)
             print("\nFINAL GRID:")
-            print(applied.layout.render_ascii())
+            print(render_grid(applied.layout))
 
 
 if __name__ == "__main__":
