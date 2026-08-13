@@ -34,9 +34,11 @@ class GRPOConfig:
     num_generations: int = 8            # G — group size
     temperature: float = 0.8
     max_new_tokens: int = 1024
+    max_prompt_length: int | None = None
     beta: float = 0.04
     learning_rate: float = 5e-5
     max_steps: int = 200
+    save_steps: int = 50
     per_device_batch_size: int = 2
     gradient_accumulation_steps: int = 4
 
@@ -45,7 +47,8 @@ class GRPOConfig:
     lora_alpha: int = 32
     lora_dropout: float = 0.05
 
-    load_in_4bit: bool = False   # Colab bitsandbytes often broken; bf16 fits on T4
+    load_in_4bit: bool = False   # Colab bitsandbytes often broken; 1.5B + LoRA fits on T4
+    dtype: str = "float16"       # T4 supports fp16, not bf16
     seed: int = 42
 
 
@@ -76,13 +79,14 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16,
-                                     "device_map": "auto"}
+    dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16,
+             "float32": torch.float32}[config.dtype]
+    model_kwargs: dict[str, Any] = {"dtype": dtype, "device_map": "auto"}
     if config.load_in_4bit:
         from transformers import BitsAndBytesConfig  # lazy — Colab's bitsandbytes may be broken
         model_kwargs["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=dtype,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
         )
@@ -105,7 +109,7 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
 
     dataset = prepare_prompt_dataset()
 
-    trl_args = TRLGRPOConfig(
+    trl_kwargs: dict[str, Any] = dict(
         output_dir=config.output_dir,
         num_generations=config.num_generations,
         temperature=config.temperature,
@@ -115,13 +119,23 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
         max_steps=config.max_steps,
         per_device_train_batch_size=config.per_device_batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        bf16=True,
+        bf16=config.dtype == "bfloat16",
+        fp16=config.dtype == "float16",
         logging_steps=5,
         save_strategy="steps",
-        save_steps=50,
+        save_steps=config.save_steps,
         save_total_limit=6,
         seed=config.seed,
     )
+    if config.max_prompt_length is not None:
+        trl_kwargs["max_prompt_length"] = config.max_prompt_length
+
+    # TRL changes quickly; drop unknown kwargs instead of crashing Colab on
+    # harmless version skew.
+    import inspect
+    accepted = set(inspect.signature(TRLGRPOConfig.__init__).parameters)
+    trl_kwargs = {k: v for k, v in trl_kwargs.items() if k in accepted}
+    trl_args = TRLGRPOConfig(**trl_kwargs)
 
     trainer = GRPOTrainer(
         model=model,
@@ -137,5 +151,37 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
     print(f"GRPO adapter saved to {config.output_dir}")
 
 
+def _parse_args() -> GRPOConfig:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="GRPO/LoRA training for Qwen policy")
+    ap.add_argument("--model-name", default=DEFAULT_MODEL)
+    ap.add_argument("--sft-adapter", "--init-adapter", dest="sft_adapter", default=None)
+    ap.add_argument("--output-dir", default="./ckpts/grpo")
+    ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=8)
+    ap.add_argument("--temperature", type=float, default=0.8)
+    ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=1024)
+    ap.add_argument("--max-prompt-length", type=int, default=None)
+    ap.add_argument("--beta", type=float, default=0.04)
+    ap.add_argument("--learning-rate", type=float, default=5e-5)
+    ap.add_argument("--max-steps", type=int, default=200)
+    ap.add_argument("--save-steps", type=int, default=50)
+    ap.add_argument("--per-device-batch-size", type=int, default=2)
+    ap.add_argument("--gradient-accumulation-steps", type=int, default=4)
+    ap.add_argument("--lora-rank", type=int, default=16)
+    ap.add_argument("--lora-alpha", type=int, default=32)
+    ap.add_argument("--lora-dropout", type=float, default=0.05)
+    ap.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
+    ap.add_argument("--load-in-4bit", action="store_true")
+    ap.add_argument("--seed", type=int, default=42)
+    # Accepted for notebook compatibility; current reward curriculum is encoded
+    # in the fixed TRAIN_SEEDS/prompt generator.
+    ap.add_argument("--curriculum", action="store_true")
+    ns = ap.parse_args()
+    d = vars(ns)
+    d.pop("curriculum", None)
+    return GRPOConfig(**d)
+
+
 if __name__ == "__main__":
-    train()
+    train(_parse_args())

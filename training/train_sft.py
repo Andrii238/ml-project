@@ -36,7 +36,8 @@ class SFTConfig:
     lora_alpha: int = 32
     lora_dropout: float = 0.05
     max_seq_length: int = 4096
-    load_in_4bit: bool = False   # Colab bitsandbytes often broken; bf16 fits on T4
+    load_in_4bit: bool = False   # Colab bitsandbytes often broken; 1.5B + LoRA fits on T4
+    dtype: str = "float16"       # T4 supports fp16, not bf16
     seed: int = 42
 
 
@@ -76,13 +77,14 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16,
-                                     "device_map": "auto"}
+    dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16,
+             "float32": torch.float32}[config.dtype]
+    model_kwargs: dict[str, Any] = {"dtype": dtype, "device_map": "auto"}
     if config.load_in_4bit:
         from transformers import BitsAndBytesConfig  # lazy — Colab's bitsandbytes may be broken
         model_kwargs["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=dtype,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
         )
@@ -109,7 +111,8 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         learning_rate=config.learning_rate,
         max_seq_length=config.max_seq_length,
-        bf16=True,
+        bf16=config.dtype == "bfloat16",
+        fp16=config.dtype == "float16",
         logging_steps=5,
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -131,5 +134,26 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
     print(f"SFT adapter saved to {config.output_dir}")
 
 
+def _parse_args() -> SFTConfig:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="LoRA SFT warmup for Qwen policy")
+    ap.add_argument("--model-name", default=DEFAULT_MODEL)
+    ap.add_argument("--output-dir", default="./ckpts/sft")
+    ap.add_argument("--epochs", "--num-train-epochs", dest="epochs", type=int, default=3)
+    ap.add_argument("--per-device-batch-size", type=int, default=4)
+    ap.add_argument("--gradient-accumulation-steps", type=int, default=2)
+    ap.add_argument("--learning-rate", type=float, default=2e-4)
+    ap.add_argument("--lora-rank", type=int, default=16)
+    ap.add_argument("--lora-alpha", type=int, default=32)
+    ap.add_argument("--lora-dropout", type=float, default=0.05)
+    ap.add_argument("--max-seq-length", type=int, default=4096)
+    ap.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
+    ap.add_argument("--load-in-4bit", action="store_true")
+    ap.add_argument("--seed", type=int, default=42)
+    ns = ap.parse_args()
+    return SFTConfig(**vars(ns))
+
+
 if __name__ == "__main__":
-    train()
+    train(_parse_args())

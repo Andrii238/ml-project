@@ -30,9 +30,9 @@ DEFAULT_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 class QwenPolicy:
     model_name: str = DEFAULT_MODEL
     adapter_path: str | None = None    # peft LoRA adapter, if any
-    load_in_4bit: bool = False         # Colab bitsandbytes often broken; bf16 fits 1.5B on T4
-    device: str = "cuda"
-    dtype: str = "bfloat16"            # or "float16" / "float32"
+    load_in_4bit: bool = False         # Colab bitsandbytes often broken; 1.5B fits on T4
+    device: str = "auto"
+    dtype: str = "float16"             # T4 supports fp16, not bf16
 
     _model: Any = None
     _tokenizer: Any = None
@@ -46,7 +46,7 @@ class QwenPolicy:
         dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16,
                   "float32": torch.float32}[self.dtype]
 
-        kwargs: dict[str, Any] = {"torch_dtype": dtype}
+        kwargs: dict[str, Any] = {"dtype": dtype}
         if self.load_in_4bit:
             from transformers import BitsAndBytesConfig
             kwargs["quantization_config"] = BitsAndBytesConfig(
@@ -56,7 +56,10 @@ class QwenPolicy:
                 bnb_4bit_quant_type="nf4",
             )
         else:
-            kwargs["device_map"] = self.device
+            if self.device == "auto":
+                kwargs["device_map"] = "auto"
+            else:
+                kwargs["device_map"] = self.device
 
         tok = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
         if tok.pad_token is None:
