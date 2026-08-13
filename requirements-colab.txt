@@ -1,12 +1,6 @@
-# transformers 4.46.3 imports has_avx512bf16 from bitsandbytes.functional
-# during from_pretrained (even without 4-bit request), so bitsandbytes MUST be
-# >= 0.45 or that import fails.
-transformers==4.46.3
-bitsandbytes>=0.45
-trl
+# Colab already ships torch, transformers, accelerate, huggingface_hub, datasets.
+# We only add what's missing. bitsandbytes is NOT listed — nothing in this project
+# uses 4-bit quant (Qwen 1.5B fits on T4 in bf16), and shipping bnb keeps causing
+# version-mismatch import errors on Colab.
 peft
-accelerate
-datasets
-mergekit
-llm_blender
-pydantic
+trl
