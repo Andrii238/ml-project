@@ -41,23 +41,33 @@ class SFTConfig:
     seed: int = 42
 
 
-def _to_chat_row(pair: dict) -> dict:
-    """Chat-format the (prompt, completion) as [system, user, assistant]."""
-    return {
-        "messages": [
+def _to_chat_row(pair: dict, tokenizer: Any) -> dict:
+    """Format as a prompt-completion row matching inference exactly.
+
+    TRL masks prompt tokens automatically for prompt-completion datasets when
+    completion_only_loss=True. This prevents the long Factorio prompt from
+    dominating the loss while the short JSON answer remains poorly learned.
+    """
+    prompt = tokenizer.apply_chat_template(
+        [
             {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": pair["prompt"]},
-            {"role": "assistant", "content": pair["completion"]},
-        ]
+        ],
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+    return {
+        "prompt": prompt,
+        "completion": pair["completion"],
     }
 
 
-def prepare_datasets():
+def prepare_datasets(tokenizer: Any):
     """Build HF Datasets for train + val. Returns (train_ds, val_ds)."""
     from datasets import Dataset  # lazy import
 
-    train = [_to_chat_row(p) for p in build_sft_dataset(TRAIN_SEEDS)]
-    val   = [_to_chat_row(p) for p in build_sft_dataset(VAL_SEEDS)]
+    train = [_to_chat_row(p, tokenizer) for p in build_sft_dataset(TRAIN_SEEDS)]
+    val   = [_to_chat_row(p, tokenizer) for p in build_sft_dataset(VAL_SEEDS)]
     return Dataset.from_list(train), Dataset.from_list(val)
 
 
@@ -101,7 +111,7 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         task_type="CAUSAL_LM",
     )
 
-    train_ds, val_ds = prepare_datasets()
+    train_ds, val_ds = prepare_datasets(tokenizer)
 
     import inspect
 
@@ -120,7 +130,10 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         save_strategy="epoch",
         save_total_limit=2,
         seed=config.seed,
+        completion_only_loss=True,
     )
+    # TRL 0.24 renamed max_seq_length to max_length.
+    trl_kwargs["max_length"] = config.max_seq_length
     accepted = set(inspect.signature(TRLSFTConfig.__init__).parameters)
     trl_args = TRLSFTConfig(**{k: v for k, v in trl_kwargs.items() if k in accepted})
 
