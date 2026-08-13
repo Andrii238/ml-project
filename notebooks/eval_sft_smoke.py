@@ -34,7 +34,7 @@ for spec in specs:
         seeds=seeds,
         samples_per_prompt=1,
         batch_size=2,
-        max_new_tokens=1024,
+        max_new_tokens=4096,
         temperature=0.2,
     )
     results.append(CheckpointResult(
