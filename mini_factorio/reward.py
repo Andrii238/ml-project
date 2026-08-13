@@ -70,7 +70,7 @@ class RewardConfig:
     random_conv_decay:  float = 0.1
 
     # Whether to include the random exploration bonus term at all.
-    enable_random_bonus: bool = True
+    enable_random_bonus: bool = False
 
 
 DEFAULT_CONFIG = RewardConfig()

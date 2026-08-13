@@ -42,13 +42,17 @@ class CheckpointResult:
             "name": self.name,
             "adapter": self.adapter,
             "mean_reward": round(s.mean_reward, 3),
+            "mean_composite": round(s.mean_reward, 3),
             "std_reward":  round(s.std_reward, 3),
             "mean_green_science": round(s.mean_green_science, 4),
             "mean_machines": round(s.mean_machine_count, 2),
             "mean_conveyors": round(s.mean_conveyor_count, 2),
             "mean_cells": round(s.mean_total_cells, 2),
+            "mean_materials": round(s.mean_machine_count + s.mean_conveyor_count, 2),
             "parse_ok_rate": round(s.parse_ok_rate, 3),
+            "parse_ok_pct": round(100 * s.parse_ok_rate, 1),
             "valid_rate": round(s.valid_rate, 3),
+            "valid_output_pct": round(100 * s.valid_rate, 1),
             "n": s.n,
         }
 
@@ -58,8 +62,11 @@ def evaluate_checkpoints(specs: list[dict[str, Any]], *,
                           model_name: str | None = None,
                           batch_size: int = 4,
                           max_new_tokens: int = 1024,
-                          temperature: float = 0.8) -> list[CheckpointResult]:
+                          temperature: float = 0.8,
+                          n_val: int | None = None) -> list[CheckpointResult]:
     val = val_samples()
+    if n_val is not None:
+        val = val[:n_val]
     prompts = [s.prompt for s in val]
     seeds = [s.seed for s in val]
 
@@ -99,3 +106,50 @@ def rows_to_table(results: list[CheckpointResult]) -> str:
 def save_results(results: list[CheckpointResult], path: str) -> None:
     with open(path, "w") as f:
         json.dump([r.as_row() for r in results], f, indent=2)
+
+
+def _parse_checkpoint_specs(raw: list[str]) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    for item in raw:
+        if "=" not in item:
+            raise SystemExit(f"checkpoint must be NAME=PATH or NAME=BASE, got {item!r}")
+        name, path = item.split("=", 1)
+        specs.append({"name": name, "adapter": None if path == "BASE" else path})
+    return specs
+
+
+def _main() -> int:
+    import argparse
+    import pathlib
+
+    ap = argparse.ArgumentParser(description="Evaluate base/SFT/GRPO policy checkpoints")
+    ap.add_argument("--checkpoints", nargs="+", required=True,
+                    help="entries like policy_0=BASE policy_1=./ckpts/sft")
+    ap.add_argument("--samples-per-layout", type=int, default=4)
+    ap.add_argument("--n-val", type=int, default=20)
+    ap.add_argument("--model-name", default=DEFAULT_MODEL)
+    ap.add_argument("--batch-size", type=int, default=4)
+    ap.add_argument("--max-new-tokens", type=int, default=1024)
+    ap.add_argument("--temperature", type=float, default=0.8)
+    ap.add_argument("--out", default="results/eval.json")
+    args = ap.parse_args()
+
+    results = evaluate_checkpoints(
+        _parse_checkpoint_specs(args.checkpoints),
+        samples_per_layout=args.samples_per_layout,
+        model_name=args.model_name,
+        batch_size=args.batch_size,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        n_val=args.n_val,
+    )
+    print(rows_to_table(results))
+    out = pathlib.Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    save_results(results, str(out))
+    print(f"wrote {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())

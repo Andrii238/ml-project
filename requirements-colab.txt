@@ -1,6 +1,9 @@
-# Colab already ships torch, transformers, accelerate, huggingface_hub, datasets.
-# We only add what's missing. bitsandbytes is NOT listed — nothing in this project
-# uses 4-bit quant (Qwen 1.5B fits on T4 in bf16), and shipping bnb keeps causing
-# version-mismatch import errors on Colab.
-peft
-trl
+# Colab training deps. We do not install torch here; Colab provides CUDA torch.
+# bitsandbytes is intentionally omitted: Qwen 1.5B + LoRA fits on T4 in fp16,
+# and Colab bitsandbytes/native-library mismatches have caused import crashes.
+transformers>=4.56
+accelerate>=1.10
+datasets>=4.0
+pydantic>=2.7
+peft>=0.17
+trl>=0.24
