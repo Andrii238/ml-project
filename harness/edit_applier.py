@@ -76,6 +76,31 @@ def _occupants_at(lay: Layout, tile: tuple[int, int]) -> list[tuple[str, str]]:
     return out
 
 
+def _nearest_valid_assembler_anchor(lay: Layout, tier: int,
+                                    wanted_x: int, wanted_y: int
+                                    ) -> tuple[int, int] | None:
+    """Repair an LLM assembler anchor to the closest valid 3x3 placement."""
+    w, h = ASSEMBLERS[tier].size
+    grid_w, grid_h = lay.grid_size
+    max_x = grid_w - w
+    max_y = grid_h - h
+    if max_x < 0 or max_y < 0:
+        return None
+
+    candidates: list[tuple[int, int, int, int]] = []
+    for x in range(max_x + 1):
+        for y in range(max_y + 1):
+            footprint = [(x + dx, y + dy) for dx in range(w) for dy in range(h)]
+            if any(_occupants_at(lay, t) for t in footprint):
+                continue
+            dist = abs(x - wanted_x) + abs(y - wanted_y)
+            candidates.append((dist, abs(x - wanted_x), abs(y - wanted_y), x, y))
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[0][3], candidates[0][4]
+
+
 # --------------------------------------------------------------- per-edit
 
 def _apply_place_chest(lay: Layout, e: PlaceChest) -> str | None:
@@ -92,15 +117,11 @@ def _apply_place_chest(lay: Layout, e: PlaceChest) -> str | None:
 def _apply_place_assembler(lay: Layout, e: PlaceAssembler) -> str | None:
     if e.id in _all_ids(lay):
         return f"place_assembler {e.id!r}: duplicate id"
-    w, h = ASSEMBLERS[e.tier].size
-    footprint = [(e.x + dx, e.y + dy) for dx in range(w) for dy in range(h)]
-    for t in footprint:
-        if not _in_bounds(lay, *t):
-            return f"place_assembler {e.id!r}: footprint tile {t} out of bounds"
-    for t in footprint:
-        if _occupants_at(lay, t):
-            return f"place_assembler {e.id!r}: tile {t} occupied"
-    lay.assemblers.append(Assembler(id=e.id, tier=e.tier, x=e.x, y=e.y))
+    anchor = _nearest_valid_assembler_anchor(lay, e.tier, e.x, e.y)
+    if anchor is None:
+        return f"place_assembler {e.id!r}: no valid 3x3 anchor available"
+    x, y = anchor
+    lay.assemblers.append(Assembler(id=e.id, tier=e.tier, x=x, y=y))
     return None
 
 
