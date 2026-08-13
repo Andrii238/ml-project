@@ -58,7 +58,7 @@ def _to_chat_row(pair: dict, tokenizer: Any) -> dict:
     )
     return {
         "prompt": prompt,
-        "completion": pair["completion"],
+        "completion": pair["completion"] + tokenizer.eos_token,
     }
 
 

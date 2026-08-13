@@ -109,6 +109,7 @@ class QwenPolicy:
                     do_sample=temperature > 0,
                     temperature=temperature,
                     top_p=top_p,
+                    eos_token_id=self._tokenizer.eos_token_id,
                     pad_token_id=self._tokenizer.pad_token_id,
                 )
             for j, seq in enumerate(out):
