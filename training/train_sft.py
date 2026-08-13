@@ -103,7 +103,9 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
 
     train_ds, val_ds = prepare_datasets()
 
-    trl_args = TRLSFTConfig(
+    import inspect
+
+    trl_kwargs: dict[str, Any] = dict(
         output_dir=config.output_dir,
         num_train_epochs=config.epochs,
         per_device_train_batch_size=config.per_device_batch_size,
@@ -119,8 +121,10 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         save_total_limit=2,
         seed=config.seed,
     )
+    accepted = set(inspect.signature(TRLSFTConfig.__init__).parameters)
+    trl_args = TRLSFTConfig(**{k: v for k, v in trl_kwargs.items() if k in accepted})
 
-    trainer = SFTTrainer(
+    trainer_kwargs: dict[str, Any] = dict(
         model=model,
         args=trl_args,
         train_dataset=train_ds,
@@ -128,6 +132,12 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         peft_config=lora_config,
         processing_class=tokenizer,
     )
+    if "max_seq_length" not in accepted:
+        trainer_accepted = set(inspect.signature(SFTTrainer.__init__).parameters)
+        if "max_seq_length" in trainer_accepted:
+            trainer_kwargs["max_seq_length"] = config.max_seq_length
+
+    trainer = SFTTrainer(**trainer_kwargs)
     trainer.train()
     trainer.save_model(config.output_dir)
     tokenizer.save_pretrained(config.output_dir)
