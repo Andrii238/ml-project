@@ -145,9 +145,9 @@ EDIT_VOCAB_SUMMARY = (
 
 GOAL_MESSAGE = (
     "Goal: use the existing chests, then place assemblers and conveyors so green-science packs "
-    "flow from producing assemblers to the output-science chest. Maximize "
-    "delivered rate; minimize wasted machines and belts. Higher tiers cost "
-    "more and unlock a one-time penalty. Use no more than 100 edits.\n"
+    "flow from producing assemblers to the output-science chest. Maximizing delivered rate "
+    "of green science to the output chest is the main and most important objective. "
+    "Higher tiers cost more and unlock a one-time penalty. Use no more than 100 edits.\n"
 )
 
 
