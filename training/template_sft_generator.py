@@ -467,8 +467,9 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
 def _build_compact_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
     """Compact direct 2-assembler hub.
 
-    These examples intentionally place chests and assemblers in a good structure
-    so the model learns high-output production patterns instead of only routing.
+    These examples intentionally start from well-placed chests and ask for
+    assemblers/conveyors, so the model learns high-output production patterns
+    instead of only routing.
     """
     rng = random.Random(seed * 1777 + variant * 313 + 99)
     tiers = _choose_tiers(rng, 2)
@@ -544,6 +545,183 @@ def _build_compact_full_pair(seed: int, variant: int, *, grid: tuple[int, int] =
     )
 
 
+def _transform_direction(direction: Direction, *, mirror_x: bool, mirror_y: bool, transpose: bool) -> Direction:
+    dx, dy = DIR_DELTA[direction]
+    if transpose:
+        dx, dy = dy, dx
+    if mirror_x:
+        dx = -dx
+    if mirror_y:
+        dy = -dy
+    for name, delta in DIR_DELTA.items():
+        if delta == (dx, dy):
+            return name  # type: ignore[return-value]
+    raise ValueError(f"bad transformed direction {direction!r}")
+
+
+def _transform_tile(x: int, y: int, *, grid: tuple[int, int],
+                    mirror_x: bool, mirror_y: bool, transpose: bool) -> tuple[int, int]:
+    w, h = grid
+    if transpose:
+        x, y = y, x
+        w, h = h, w
+    if mirror_x:
+        x = w - 1 - x
+    if mirror_y:
+        y = h - 1 - y
+    return x, y
+
+
+def _transform_anchor(x: int, y: int, *, grid: tuple[int, int],
+                      mirror_x: bool, mirror_y: bool, transpose: bool) -> tuple[int, int]:
+    tiles = [_transform_tile(x + dx, y + dy, grid=grid,
+                             mirror_x=mirror_x, mirror_y=mirror_y,
+                             transpose=transpose)
+             for dx in range(3) for dy in range(3)]
+    return min(t[0] for t in tiles), min(t[1] for t in tiles)
+
+
+def _transform_layout_and_edits(initial: Layout, edits: list[dict], *, rng: random.Random,
+                                grid: tuple[int, int]) -> tuple[Layout, list[dict]]:
+    # Randomize orientation and corner while keeping exact simulator semantics.
+    mirror_x = rng.choice((False, True))
+    mirror_y = rng.choice((False, True))
+    transpose = rng.choice((False, True))
+
+    chests: list[Chest] = []
+    for c in initial.chests:
+        x, y = _transform_tile(c.x, c.y, grid=grid,
+                               mirror_x=mirror_x, mirror_y=mirror_y,
+                               transpose=transpose)
+        chests.append(Chest(id=c.id, kind=c.kind, x=x, y=y))
+    out_initial = Layout(grid_size=grid, chest_rates=initial.chest_rates, chests=chests)
+
+    out_edits: list[dict] = []
+    for e in edits:
+        if e["op"] == "place_assembler":
+            x, y = _transform_anchor(e["x"], e["y"], grid=grid,
+                                     mirror_x=mirror_x, mirror_y=mirror_y,
+                                     transpose=transpose)
+            out_edits.append({**e, "x": x, "y": y})
+        elif e["op"] == "place_conveyor":
+            x, y = _transform_tile(e["x"], e["y"], grid=grid,
+                                   mirror_x=mirror_x, mirror_y=mirror_y,
+                                   transpose=transpose)
+            d = _transform_direction(e["direction"], mirror_x=mirror_x,
+                                     mirror_y=mirror_y, transpose=transpose)
+            out_edits.append({**e, "x": x, "y": y, "direction": d})
+        else:
+            out_edits.append(dict(e))
+    return out_initial, out_edits
+
+
+def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Large 3-8 assembler bus template.
+
+    The template keeps all chests in the same corner/side region and builds a
+    compact assembler block around shared buses:
+    - 3-4 assemblers: one row,
+    - 5-8 assemblers: two parallel rows,
+    - one shared input bus carries both recipe ingredients,
+    - one or two shared output buses carry science to the output chest.
+    """
+    rng = random.Random(seed * 3253 + variant * 2017 + 503)
+    n_assemblers = rng.randint(3, 8)
+    rows = 1 if n_assemblers <= 4 else 2
+    cols = math.ceil(n_assemblers / rows)
+    x0 = 4
+    top_y = 7 if rows == 1 else 4
+    row_gap = 4
+    tiers = _choose_tiers(rng, n_assemblers)
+    rates = sample_chest_rates(rng)
+
+    input_bus_y = top_y - 1 if rows == 1 else top_y + 3
+    output_ys = [top_y + 3] if rows == 1 else [top_y - 1, top_y + row_gap + 3]
+    max_x = x0 + (cols - 1) * 4 + 2
+    if max_x >= grid[0] or max(output_ys + [input_bus_y]) >= grid[1]:
+        return None
+
+    chests = [
+        Chest(id="chest_output-science", kind="output-science", x=0, y=0),
+        Chest(id="chest_input-belts", kind="input-belts", x=2, y=input_bus_y),
+        Chest(id="chest_input-inserters", kind="input-inserters", x=3, y=input_bus_y - 2),
+    ]
+    if len({(c.x, c.y) for c in chests}) != 3:
+        return None
+    initial = Layout(grid_size=grid, chest_rates=rates, chests=chests)
+
+    edits: list[dict] = []
+    assemblers: list[_AsmSpec] = []
+    for i in range(n_assemblers):
+        row = i // cols
+        col = i % cols
+        a = _AsmSpec(id=f"gen_a{i + 1}", tier=tiers[i],
+                     x=x0 + col * 4, y=top_y + row * row_gap)
+        assemblers.append(a)
+        edits.append({"op": "place_assembler", "id": a.id, "tier": a.tier,
+                      "x": a.x, "y": a.y})
+
+    conv_keys: set[tuple[int, int, Direction]] = set()
+
+    def add_cv(x: int, y: int, d: Direction, *, tier: int = 1) -> None:
+        if not _in_bounds((x, y), grid):
+            raise ValueError("conveyor out of bounds")
+        key = (x, y, d)
+        if key in conv_keys:
+            return
+        conv_keys.add(key)
+        edits.append({"op": "place_conveyor", "id": f"gen_c{len(conv_keys)}",
+                      "tier": tier, "x": x, "y": y, "direction": d})
+
+    try:
+        # Output trunk from row output buses to output chest at (0,0).
+        for y in range(1, max(output_ys) + 1):
+            add_cv(0, y, "north")
+
+        # Shared input bus. Belt chest feeds first bus tile from the west;
+        # inserter chest feeds same bus tile from above. The bus then carries
+        # both items on its two lanes past all assemblers.
+        add_cv(3, input_bus_y - 1, "south")
+        for x in range(3, max_x + 1):
+            add_cv(x, input_bus_y, "east")
+
+        # Output buses. The relaxed simulator rule lets assemblers output onto
+        # adjacent empty/science conveyors, so west-flowing buses beside each row
+        # collect science directly and carry it into the output trunk.
+        for y in output_ys:
+            for x in range(1, max_x + 1):
+                add_cv(x, y, "west")
+    except ValueError:
+        return None
+
+    if len(edits) > MAX_EDITS:
+        return None
+
+    initial, edits = _transform_layout_and_edits(initial, edits, rng=rng, grid=grid)
+
+    typed = []
+    for raw in edits:
+        e, err = parse_edit(raw)
+        if e is None:
+            return None
+        typed.append(e)
+    applied = apply_edits(initial, typed)
+    if applied.errors or applied.applied != len(typed):
+        return None
+    sim = simulate(applied.layout)
+    if sim.green_science_rate <= 0:
+        return None
+    return GeneratedPair(
+        seed=seed,
+        prompt=build_user_message(initial),
+        completion=json.dumps(edits, separators=(",", ":")),
+        sim_gs_rate=sim.green_science_rate,
+        n_assemblers=n_assemblers,
+        tiers=tuple(a.tier for a in assemblers),
+        mode="full",
+    )
+
+
 def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> GeneratedPair | None:
     """Create a partial-repair sample by deleting entities from a verified
     full solution. The completion re-adds the deleted entities.
@@ -613,11 +791,13 @@ def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> Generate
 def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
     """Return a balanced set for one seed.
 
-    For the default 4 variants:
+    For the default 8 variants:
     - random-chest full build,
     - random-chest partial repair,
     - compact 2-assembler full build,
-    - compact 2-assembler partial repair.
+    - compact 2-assembler partial repair,
+    - two large 3-8 assembler bus full builds,
+    - two large 3-8 assembler bus partial repairs.
     """
     out: list[GeneratedPair] = []
 
@@ -638,6 +818,12 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
             variant += 2
         if len(out) < variants:
             add_pair(_build_compact_full_pair(seed, variant), variant + 1)
+            variant += 2
+        if len(out) < variants:
+            add_pair(_build_large_bus_full_pair(seed, variant), variant + 1)
+            variant += 2
+        if len(out) < variants:
+            add_pair(_build_large_bus_full_pair(seed, variant), variant + 1)
             variant += 2
 
     return [

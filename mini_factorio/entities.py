@@ -15,7 +15,7 @@ Design decisions locked in plan.md §"Locked decisions (2026-08-12)":
 - No electricity. Machines always powered.
 - Only one recipe: green-science pack (logistic-science-pack).
   Real Factorio recipe: 1 transport-belt + 1 inserter -> 1 pack, time = 6s.
-- Chest positions decided by the model each episode.
+- Chest positions are part of the episode layout; the model should not duplicate them.
 - Perpendicular same-tile conveyor crossings allowed (translate to distance-2
   underground pair in real Factorio).
 """

@@ -97,7 +97,7 @@ def render_entity_list(layout: Layout) -> str:
 
 SYSTEM_MESSAGE = (
     "You design a factory layout to produce green science packs. "
-    "You emit JSON edits that place, remove, or move entities on a 20x20 grid. "
+    "You emit JSON edits that place entities on a 20x20 grid. "
     "Follow the schema exactly. Use no more than 100 edits. "
     "Reply with the JSON array only, no prose."
 )
@@ -115,7 +115,11 @@ def _render_recipe_and_map_facts(layout: Layout) -> str:
         "Conveyor per-lane throughput: T1=15, T2=30, T3=45 items/sec. "
         "Two lanes per tile; each lane carries at most one item type. "
         "Two conveyors may share a tile only if perpendicular (crossing).\n"
-        "Machines auto-transfer from any adjacent conveyor (no inserter entity).\n"
+        "Required chests are already present: input-belts, input-inserters, and output-science. "
+        "Do not place, remove, or duplicate required chests. Only add assemblers and conveyors.\n"
+        "Assemblers consume required inputs from any adjacent conveyor carrying them. "
+        "Assemblers output science onto adjacent conveyors that are empty or already carrying science, not onto input conveyors carrying recipe ingredients. "
+        "No inserter entity exists in this simplified environment.\n"
     )
 
 
@@ -129,18 +133,15 @@ def _render_rates(layout: Layout) -> str:
 
 EDIT_VOCAB_SUMMARY = (
     "Edit vocabulary (details in schema):\n"
-    "  {\"op\":\"place_chest\",     \"kind\":\"input-belts|input-inserters|output-science\","
-    " \"x\":int, \"y\":int, \"id\":str}\n"
     "  {\"op\":\"place_assembler\", \"tier\":1|2|3, \"x\":int, \"y\":int, \"id\":str} "
     "where x,y are the 3x3 top-left anchor and must satisfy 0<=x<=17, 0<=y<=17\n"
     "  {\"op\":\"place_conveyor\",  \"tier\":1|2|3, \"x\":int, \"y\":int,"
     " \"direction\":\"north|south|east|west\", \"id\":str}\n"
-    "  {\"op\":\"remove_entity\",   \"id\":str}\n"
 )
 
 
 GOAL_MESSAGE = (
-    "Goal: place chests, assemblers, and conveyors so green-science packs "
+    "Goal: use the existing chests, then place assemblers and conveyors so green-science packs "
     "flow from producing assemblers to the output-science chest. Maximize "
     "delivered rate; minimize wasted machines and belts. Higher tiers cost "
     "more and unlock a one-time penalty. Use no more than 100 edits.\n"

@@ -8,10 +8,11 @@ Tolerates common noise:
 Fails cleanly on:
 - no `[` found (returns [], parse_error explaining)
 - JSON syntax error inside the array
-- truncated JSON (unclosed bracket)
 
-Per-edit validation errors are collected and returned alongside the successful
-edits — a partial parse still returns whichever edits validated.
+Truncated arrays are repaired when at least one complete edit object exists;
+otherwise parsing fails cleanly. Per-edit validation errors are collected
+and returned alongside the successful edits — a partial parse still returns
+whichever edits validated.
 """
 from __future__ import annotations
 

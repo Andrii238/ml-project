@@ -310,6 +310,39 @@ def test_simulator_single_asm_saturated_supply_asm3():
     assert abs(res.green_science_rate - 1.25 / 6) < 1e-6, res.green_science_rate
 
 
+def test_simulator_assembler_consumes_from_adjacent_side_conveyors():
+    lay = Layout(chest_rates=ChestRates(belts=10.0, inserters=10.0))
+    lay.chests = [
+        Chest(id="cb", kind="input-belts", x=0, y=10),
+        Chest(id="ci", kind="input-inserters", x=0, y=12),
+        Chest(id="co", kind="output-science", x=8, y=11),
+    ]
+    lay.assemblers = [Assembler(id="a", tier=1, x=3, y=10)]
+    lay.conveyors = [
+        Conveyor(id="b1", x=1, y=10, direction="east"),
+        Conveyor(id="b2", x=2, y=10, direction="east"),
+        Conveyor(id="i1", x=1, y=12, direction="east"),
+        Conveyor(id="i2", x=2, y=12, direction="east"),
+        Conveyor(id="o1", x=6, y=11, direction="east"),
+        Conveyor(id="o2", x=7, y=11, direction="east"),
+    ]
+    res = simulate(lay)
+    assert res.warnings == []
+    assert abs(res.green_science_rate - 0.5 / 6) < 1e-6, res.green_science_rate
+
+
+def test_simulator_assembler_outputs_to_adjacent_science_conveyor():
+    lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
+    lay.chests = [c for c in lay.chests if c.kind != "output-science"]
+    lay.chests.append(Chest(id="co", kind="output-science", x=6, y=7))
+    lay.conveyors = [c for c in lay.conveyors if c.id != "cv_o"]
+    # This conveyor is adjacent to the assembler but does not point away from
+    # its footprint. New rule: adjacent empty/science conveyors can receive output.
+    lay.conveyors.append(Conveyor(id="cv_o", x=7, y=7, direction="west"))
+    res = simulate(lay)
+    assert abs(res.green_science_rate - 0.5 / 6) < 1e-6, res.green_science_rate
+
+
 def test_simulator_single_asm_bottlenecked_by_belts():
     # Belts supply 0.05/s, inserters 5/s. Output = 0.05/s (bottleneck).
     lay = _simple_chain_layout(tier=3, belts_rate=0.05, inserters_rate=5.0)
@@ -484,7 +517,8 @@ def test_reward_random_bonus_zero_when_disabled():
 
 def test_reward_random_bonus_positive_when_enabled():
     lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
-    br = compute_reward(lay)  # default enables random bonus
+    cfg = RewardConfig(enable_random_bonus=True)
+    br = compute_reward(lay, config=cfg)
     assert br.random_bonus > 0.0
 
 
@@ -742,11 +776,11 @@ def test_parse_edits_strips_markdown_fence():
     assert len(r.edits) == 1
 
 
-def test_parse_edits_truncated_array_flagged():
-    text = '[{"op":"remove_entity","id":"a"},'   # unclosed
+def test_parse_edits_truncated_array_repaired_when_possible():
+    text = '[{"op":"remove_entity","id":"a"},'   # unclosed after one complete edit
     r = parse_edits(text)
-    assert r.parse_error is not None
-    assert "truncated" in r.parse_error or "unterminated" in r.parse_error
+    assert r.parse_error is None
+    assert len(r.edits) == 1
 
 
 def test_parse_edits_partial_valid_edits_survive():

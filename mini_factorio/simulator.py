@@ -9,12 +9,13 @@ Model:
   if perpendicular (a "crossing"); each keeps its own lane pool.
 - Chest emission divides equally among adjacent conveyors that point away
   from the chest.
-- Assembler consumes belts + inserters from conveyors whose downstream tile
-  is on the assembler footprint (i.e., they end at the machine).
+- Assembler consumes belts + inserters from any adjacent conveyor carrying
+  those items. Conveyor direction does not matter for machine input.
 - Assembler output = min(crafting_rate, belts_in, inserters_in) crafts/sec.
-- Assembler pushes green-science onto conveyors whose upstream tile is on
-  the assembler footprint (they start at the machine, point away). Output
-  divides equally among those.
+- Assembler pushes green-science onto adjacent conveyors that are empty or
+  already carrying science. It does not push science onto input conveyors
+  carrying transport-belts or inserters. Output divides equally among eligible
+  adjacent conveyors.
 - 2-lane cap: at most 2 distinct items per conveyor. If the sim would push a
   3rd item onto a conveyor, the surplus is dropped (with a warning). Each
   lane's rate is capped at CONVEYOR_LANE_CAPACITY.
@@ -120,17 +121,17 @@ def simulate(layout: Layout, *, max_iters: int = 200,
     for cv in layout.conveyors:
         conveyors_from_chest.setdefault(cv.upstream_tile(), []).append(cv)
 
-    # For each assembler: input conveyors (cv.downstream on footprint) and
-    # output conveyors (cv.upstream on footprint).
-    asm_input_conveyors: dict[str, list[Conveyor]] = {a.id: [] for a in layout.assemblers}
-    asm_output_conveyors: dict[str, list[Conveyor]] = {a.id: [] for a in layout.assemblers}
+    # For each assembler: adjacent conveyors are input candidates and output
+    # candidates. Runtime item content decides whether a conveyor is acting as
+    # input (belts/inserters present) or output (empty/science only).
+    asm_adjacent_conveyors: dict[str, list[Conveyor]] = {a.id: [] for a in layout.assemblers}
+    conveyor_adjacent_assemblers: dict[str, list[Assembler]] = {cv.id: [] for cv in layout.conveyors}
     for a in layout.assemblers:
-        fp = set(a.footprint)
+        border = set(a.border_tiles())
         for cv in layout.conveyors:
-            if cv.downstream_tile() in fp:
-                asm_input_conveyors[a.id].append(cv)
-            if cv.upstream_tile() in fp:
-                asm_output_conveyors[a.id].append(cv)
+            if (cv.x, cv.y) in border:
+                asm_adjacent_conveyors[a.id].append(cv)
+                conveyor_adjacent_assemblers[cv.id].append(a)
 
     # Required chests must all be present, otherwise short-circuit to 0.
     if not [c for c in layout.chests if c.kind == "output-science"]:
@@ -176,14 +177,22 @@ def simulate(layout: Layout, *, max_iters: int = 200,
             a.id: MachineFlow(id=a.id, tier=a.tier) for a in layout.assemblers
         }
 
-        # Assembler outputs based on previous inputs.
+        # Assembler outputs based on previous inputs. Eligible output conveyors
+        # are adjacent conveyors that are empty or already carrying science.
         assembler_science_out: dict[str, float] = {}
+        asm_output_conveyors: dict[str, list[Conveyor]] = {}
         for a in layout.assemblers:
             spec = ASSEMBLERS[a.tier]
             mf_prev = machine_flows[a.id]
             science = min(spec.crafts_per_sec_green_science,
                           mf_prev.belts_in, mf_prev.inserters_in)
             assembler_science_out[a.id] = science
+            outs: list[Conveyor] = []
+            for cv in asm_adjacent_conveyors[a.id]:
+                prev_items = conveyor_items[cv.id]
+                if ITEM_BELTS not in prev_items and ITEM_INSERTERS not in prev_items:
+                    outs.append(cv)
+            asm_output_conveyors[a.id] = outs
 
         # For each conveyor, aggregate incoming.
         # A cv receives from ANY neighbor conveyor whose downstream tile is
@@ -202,10 +211,9 @@ def simulate(layout: Layout, *, max_iters: int = 200,
                             for item, rate in conveyor_items[up_cv.id].items():
                                 inc[item] = inc.get(item, 0.0) + rate
 
-            # From assembler output: assembler pushes onto cv if cv.upstream on asm footprint.
-            up_tile = cv.upstream_tile()
-            if up_tile in tile_assembler:
-                a = tile_assembler[up_tile]
+            # From assembler output: assembler pushes onto adjacent conveyors
+            # that are not currently carrying recipe inputs.
+            for a in conveyor_adjacent_assemblers[cv.id]:
                 outs = asm_output_conveyors[a.id]
                 if outs and cv in outs:
                     per_cv = assembler_science_out[a.id] / len(outs)
@@ -216,10 +224,10 @@ def simulate(layout: Layout, *, max_iters: int = 200,
                               f"conveyor {cv.id} at ({cv.x},{cv.y}) T{cv.tier}")
             new_conveyor_items[cv.id] = inc
 
-        # For each assembler, sum inputs from conveyors whose downstream is on footprint.
+        # For each assembler, sum inputs from any adjacent conveyor.
         for a in layout.assemblers:
             mf = new_machine_flows[a.id]
-            for cv in asm_input_conveyors[a.id]:
+            for cv in asm_adjacent_conveyors[a.id]:
                 for item, rate in new_conveyor_items[cv.id].items():
                     if item == ITEM_BELTS:
                         mf.belts_in += rate

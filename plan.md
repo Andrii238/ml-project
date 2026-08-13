@@ -31,7 +31,7 @@ The earlier complex environment (belts + inserters as first-class entities, coal
   - One chest emits `inserter` items.
   - Output rates are **randomized per episode within reasonable bounds** (bounds TBD). Randomization adds stochasticity and prevents closed-form degenerate solutions.
 - **One output chest, infinite capacity.** Green science delivered here counts toward the reward.
-- **The model places all three chests** on the grid (chest positions are actions).
+- **The episode provides all three chests** on the grid. The model does not place, remove, or duplicate required chests.
 
 ### Machine throughput rule
 `actual_output = min(machine_crafting_rate, adjacent_conveyor_delivery_rate)`
@@ -114,7 +114,7 @@ Seven-chunk rewrite executed under the simplified spec. **All 91 unit tests pass
 - 9 tests covering grid rendering, chest chars, tier display, crossing symbol, message sections, chat shape, rate precision.
 
 ### Chunk 6 — edit vocab + parser + applier (`harness/edit_schema.py`, `edit_parser.py`, `edit_applier.py`)
-- Four edit types: `place_chest`, `place_assembler`, `place_conveyor`, `remove_entity`. All pydantic-typed.
+- Main model-facing edit types: `place_assembler`, `place_conveyor`. The parser still supports `place_chest` and `remove_entity` internally, but current prompts/training do not ask the model to use them because required chests are pre-placed and the agreed action space is building-only.
 - Parser tolerates: prose before/after, markdown code fences, per-item validation errors (partial edits survive). Detects truncated arrays.
 - Applier: deep-copies input, applies each edit in isolation, collects per-edit errors. Enforces bounds, ID uniqueness, non-overlap (with perpendicular-crossing exception).
 - 20 tests covering schema, parser edge cases (prose, fences, truncation, partial-valid), applier (add/remove, duplicates, out-of-bounds, footprint overlap, perpendicular crossing, immutability), one end-to-end parse→apply.
@@ -553,7 +553,7 @@ Initial weights: `alpha=0.001`, `beta=0.01`, `gamma=0.05`.
 ### Edit schema
 
 - `add_entity {type, x, y, direction, recipe?, target_resource?}` — for machines. `target_resource` is required for miners (which patch to mine). `recipe` is required for furnaces and assemblers.
-- `remove_entity {id}` — removes a machine or inserter.
+- `remove_entity {id}` — supported internally by the parser/applier, but not exposed in the current building-only model prompt.
 - `add_belt {id, item, tiles: [[x1,y1,dir1], [x2,y2,dir2], ...]}` — places a belt as a directed contiguous line of tiles carrying one item type. Validator checks tiles are in bounds, non-overlapping with existing entities, form a contiguous chain, and direction is consistent between adjacent tiles.
 - `remove_belt {id}` — removes an entire belt.
 - `extend_belt {id, tiles: [...]}` — appends tiles at head or tail.

@@ -280,4 +280,4 @@ def build_sft_dataset(seeds: Iterable[int]) -> list[dict]:
     """
     from training.template_sft_generator import build_template_dataset
 
-    return build_template_dataset(seeds, variants_per_seed=4)
+    return build_template_dataset(seeds, variants_per_seed=8)
