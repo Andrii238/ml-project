@@ -272,9 +272,12 @@ def build_sft_pair(seed: int) -> dict | None:
 
 
 def build_sft_dataset(seeds: Iterable[int]) -> list[dict]:
-    out: list[dict] = []
-    for s in seeds:
-        pair = build_sft_pair(s)
-        if pair is not None:
-            out.append(pair)
-    return out
+    """Build verified SFT examples.
+
+    The old single-chain oracle remains above for reference, but the active
+    dataset uses compact template-random examples with full-build and
+    partial-repair prompts.
+    """
+    from training.template_sft_generator import build_template_dataset
+
+    return build_template_dataset(seeds, variants_per_seed=4)
