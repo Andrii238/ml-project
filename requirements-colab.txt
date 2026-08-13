@@ -1,6 +1,7 @@
-# Minimum-pinning install. transformers pinned to 4.x because 5.x introduces
-# API changes (has_avx512bf16 etc) that break older bitsandbytes builds.
-transformers<5.0
+# Strict pin on transformers because later 4.x builds probe bitsandbytes API
+# during from_pretrained even without quantization request, and the newer API
+# calls (has_avx512bf16) aren't in older bitsandbytes builds Colab has.
+transformers==4.46.3
 trl
 peft
 accelerate
