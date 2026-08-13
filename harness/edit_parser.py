@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from .edit_schema import Edit, parse_edit
 
-MAX_EDITS = 40
+MAX_EDITS = 60
 
 
 @dataclass

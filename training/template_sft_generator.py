@@ -69,6 +69,32 @@ def _in_bounds(t: tuple[int, int], grid: tuple[int, int]) -> bool:
     return 0 <= t[0] < grid[0] and 0 <= t[1] < grid[1]
 
 
+def _paired_input_episode(seed: int, grid_size: tuple[int, int] = (20, 20)) -> Layout:
+    """Chest-only episode with input chests adjacent/near-adjacent and output
+    random. This keeps routing learnable while preserving varied locations."""
+    rng = random.Random(seed)
+    lay = Layout(grid_size=grid_size, chest_rates=sample_chest_rates(rng))
+    w, h = grid_size
+
+    bx = rng.randint(0, w - 1)
+    by = rng.randint(0, h - 1)
+    candidates = [(bx + 1, by), (bx - 1, by), (bx, by + 1), (bx, by - 1)]
+    candidates = [t for t in candidates if _in_bounds(t, grid_size)]
+    if not candidates:
+        return empty_episode(seed, grid_size=grid_size)
+    ix, iy = rng.choice(candidates)
+
+    occupied = {(bx, by), (ix, iy)}
+    out_choices = [(x, y) for x in range(w) for y in range(h) if (x, y) not in occupied]
+    ox, oy = rng.choice(out_choices)
+    lay.chests = [
+        Chest(id="chest_input-belts", kind="input-belts", x=bx, y=by),
+        Chest(id="chest_input-inserters", kind="input-inserters", x=ix, y=iy),
+        Chest(id="chest_output-science", kind="output-science", x=ox, y=oy),
+    ]
+    return lay
+
+
 def _bfs(start: tuple[int, int], targets: set[tuple[int, int]],
          blocked: set[tuple[int, int]], grid: tuple[int, int]
          ) -> list[tuple[int, int]] | None:
@@ -279,7 +305,7 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
     positions, and the completion must place assemblers/conveyors around them.
     """
     rng = random.Random(seed * 1009 + variant * 9176 + 17)
-    initial = empty_episode(seed * 1000 + variant, grid_size=grid)
+    initial = _paired_input_episode(seed * 1000 + variant, grid_size=grid)
     chests = {c.kind: c for c in initial.chests}
     if set(chests) != {"input-belts", "input-inserters", "output-science"}:
         return None
