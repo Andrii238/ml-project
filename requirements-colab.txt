@@ -1,7 +1,6 @@
-# Minimum-pinning install. Let pip resolve versions.
-# All packages required to import trl.GRPOTrainer are listed (trl hard-imports
-# mergekit and llm_blender at module load; we install them so imports succeed).
-transformers
+# Minimum-pinning install. transformers pinned to 4.x because 5.x introduces
+# API changes (has_avx512bf16 etc) that break older bitsandbytes builds.
+transformers<5.0
 trl
 peft
 accelerate
