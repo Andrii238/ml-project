@@ -61,7 +61,8 @@ class QwenPolicy:
             else:
                 kwargs["device_map"] = self.device
 
-        tok = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        tok = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True,
+                                            padding_side="left")
         if tok.pad_token is None:
             tok.pad_token = tok.eos_token
         model = AutoModelForCausalLM.from_pretrained(self.model_name,
