@@ -1,8 +1,8 @@
 """Template-random SFT example generator.
 
 Generates verified (prompt, completion) pairs for green-science layout edits.
-Unlike the old single-chain oracle, this generator creates compact factories
-with varied assembler counts, mixed tiers, and partial-repair prompts.
+Prompts start from the same random chest-only layouts used in evaluation, then
+completions build or repair a working green-science factory.
 
 Every returned sample is accepted only if:
 - completion parses and applies without errors,
@@ -23,7 +23,7 @@ from harness.edit_schema import parse_edit
 from harness.prompt_builder import build_user_message
 from mini_factorio.entities import DIR_DELTA, Direction
 from mini_factorio.layout import Assembler, Chest, ChestRates, Conveyor, Layout
-from mini_factorio.random_layouts import sample_chest_rates
+from mini_factorio.random_layouts import empty_episode, sample_chest_rates
 from mini_factorio.simulator import simulate
 
 Mode = Literal["full", "partial"]
@@ -273,81 +273,136 @@ def _make_chest_layout(rng: random.Random, assemblers: list[_AsmSpec],
 
 
 def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+    """Build a full solution from a random chest-only episode.
+
+    This deliberately matches evaluation: the prompt starts with random chest
+    positions, and the completion must place assemblers/conveyors around them.
+    """
     rng = random.Random(seed * 1009 + variant * 9176 + 17)
-    n_assemblers = 2 if rng.random() < 0.6 else 1
-    tiers = _choose_tiers(rng, n_assemblers)
-    rates = sample_chest_rates(rng)
-
-    edits: list[dict] = []
-    chests: list[Chest] = []
-
-    if n_assemblers == 1:
-        # Compact one-assembler cell. Completion is only 4 edits.
-        x = rng.randint(2, 15)
-        y = rng.randint(2, 17)
-        chests = [
-            Chest(id="chest_input-belts", kind="input-belts", x=x - 2, y=y + 1),
-            Chest(id="chest_input-inserters", kind="input-inserters", x=x + 1, y=y - 2),
-            Chest(id="chest_output-science", kind="output-science", x=x + 4, y=y + 1),
-        ]
-        assemblers = [_AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y)]
-        edits = [
-            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
-            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x - 1, "y": y + 1, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 1, "y": y - 1, "direction": "south"},
-            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x + 3, "y": y + 1, "direction": "east"},
-        ]
-    else:
-        # Two assemblers facing a shared gap. Both input chests split to two
-        # adjacent conveyors; both assemblers deliver to the same output chest.
-        x = rng.randint(0, 11)
-        y = rng.randint(0, 17)
-        left = _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y)
-        right = _AsmSpec(id="gen_a2", tier=tiers[1], x=x + 6, y=y)
-        assemblers = [left, right]
-        chests = [
-            Chest(id="chest_input-belts", kind="input-belts", x=x + 4, y=y + 1),
-            Chest(id="chest_input-inserters", kind="input-inserters", x=x + 4, y=y),
-            Chest(id="chest_output-science", kind="output-science", x=x + 4, y=y + 2),
-        ]
-        edits = [
-            {"op": "place_assembler", "id": "gen_a1", "tier": tiers[0], "x": x, "y": y},
-            {"op": "place_assembler", "id": "gen_a2", "tier": tiers[1], "x": x + 6, "y": y},
-            {"op": "place_conveyor", "id": "gen_c1", "tier": 1, "x": x + 3, "y": y + 1, "direction": "west"},
-            {"op": "place_conveyor", "id": "gen_c2", "tier": 1, "x": x + 5, "y": y + 1, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c3", "tier": 1, "x": x + 3, "y": y, "direction": "west"},
-            {"op": "place_conveyor", "id": "gen_c4", "tier": 1, "x": x + 5, "y": y, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c5", "tier": 1, "x": x + 3, "y": y + 2, "direction": "east"},
-            {"op": "place_conveyor", "id": "gen_c6", "tier": 1, "x": x + 5, "y": y + 2, "direction": "west"},
-        ]
-
-    initial = Layout(grid_size=grid, chest_rates=rates, chests=chests)
-    if len(edits) > MAX_EDITS:
+    initial = empty_episode(seed * 1000 + variant, grid_size=grid)
+    chests = {c.kind: c for c in initial.chests}
+    if set(chests) != {"input-belts", "input-inserters", "output-science"}:
         return None
 
-    typed = []
-    for raw in edits:
-        e, err = parse_edit(raw)
-        if e is None:
-            return None
-        typed.append(e)
-    applied = apply_edits(initial, typed)
-    if applied.errors or applied.applied != len(typed):
-        return None
-    sim = simulate(applied.layout)
-    if sim.green_science_rate <= 0:
-        return None
+    wanted_n = 2 if rng.random() < 0.55 else 1
+    n_options = [wanted_n, 1] if wanted_n == 2 else [1, 2]
 
-    completion = json.dumps(edits, separators=(",", ":"))
-    return GeneratedPair(
-        seed=seed,
-        prompt=build_user_message(initial),
-        completion=completion,
-        sim_gs_rate=sim.green_science_rate,
-        n_assemblers=n_assemblers,
-        tiers=tuple(a.tier for a in assemblers),
-        mode="full",
-    )
+    occupied_chests = {(c.x, c.y) for c in initial.chests}
+
+    def _block_candidates(n: int) -> list[list[_AsmSpec]]:
+        candidates: list[tuple[float, list[_AsmSpec]]] = []
+        tiers = _choose_tiers(rng, n)
+        if n == 1:
+            for x in range(1, grid[0] - 3):
+                for y in range(1, grid[1] - 3):
+                    a = _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y)
+                    if a.footprint & occupied_chests:
+                        continue
+                    belt_target = (x - 1, y + 1)
+                    ins_target = (x + 1, y - 1)
+                    out_first = (x + 3, y + 1)
+                    if not all(_in_bounds(t, grid) for t in (belt_target, ins_target, out_first)):
+                        continue
+                    cost = (
+                        abs(chests["input-belts"].x - belt_target[0]) + abs(chests["input-belts"].y - belt_target[1])
+                        + abs(chests["input-inserters"].x - ins_target[0]) + abs(chests["input-inserters"].y - ins_target[1])
+                        + abs(chests["output-science"].x - out_first[0]) + abs(chests["output-science"].y - out_first[1])
+                        + rng.random() * 0.25
+                    )
+                    candidates.append((cost, [a]))
+        else:
+            # Two horizontal assemblers with enough room for west/north inputs and east outputs.
+            for x in range(1, grid[0] - 9):
+                for y in range(1, grid[1] - 3):
+                    left = _AsmSpec(id="gen_a1", tier=tiers[0], x=x, y=y)
+                    right = _AsmSpec(id="gen_a2", tier=tiers[1], x=x + 6, y=y)
+                    fp = left.footprint | right.footprint
+                    if fp & occupied_chests:
+                        continue
+                    targets = [
+                        (left.x - 1, y + 1), (left.x + 1, y - 1), (left.x + 3, y + 1),
+                        (right.x - 1, y + 1), (right.x + 1, y - 1), (right.x + 3, y + 1),
+                    ]
+                    if not all(_in_bounds(t, grid) for t in targets):
+                        continue
+                    cost = 0.0
+                    for a in (left, right):
+                        belt_target = (a.x - 1, a.y + 1)
+                        ins_target = (a.x + 1, a.y - 1)
+                        out_first = (a.x + 3, a.y + 1)
+                        cost += (
+                            abs(chests["input-belts"].x - belt_target[0]) + abs(chests["input-belts"].y - belt_target[1])
+                            + abs(chests["input-inserters"].x - ins_target[0]) + abs(chests["input-inserters"].y - ins_target[1])
+                            + abs(chests["output-science"].x - out_first[0]) + abs(chests["output-science"].y - out_first[1])
+                        )
+                    candidates.append((cost + rng.random() * 0.25, [left, right]))
+        candidates.sort(key=lambda c: c[0])
+        return [c[1] for c in candidates[:40]]
+
+    for n_assemblers in n_options:
+        for assemblers in _block_candidates(n_assemblers):
+            blocked = set(occupied_chests)
+            for a in assemblers:
+                blocked.update(a.footprint)
+
+            edits: list[dict] = []
+            for a in assemblers:
+                edits.append({"op": "place_assembler", "id": a.id, "tier": a.tier,
+                              "x": a.x, "y": a.y})
+
+            ok = True
+            for a in assemblers:
+                ok = _route_from_chest_to_machine(
+                    edits, blocked, chests["input-belts"],
+                    target_tile=(a.x - 1, a.y + 1), machine_tile=(a.x, a.y + 1),
+                    grid=grid, rng=rng,
+                )
+                if not ok:
+                    break
+                ok = _route_from_chest_to_machine(
+                    edits, blocked, chests["input-inserters"],
+                    target_tile=(a.x + 1, a.y - 1), machine_tile=(a.x + 1, a.y),
+                    grid=grid, rng=rng,
+                )
+                if not ok:
+                    break
+                ok = _route_from_machine_to_chest(
+                    edits, blocked, machine_tile=(a.x + 2, a.y + 1),
+                    first_tile=(a.x + 3, a.y + 1), chest=chests["output-science"],
+                    grid=grid, rng=rng,
+                )
+                if not ok:
+                    break
+            if not ok or len(edits) > MAX_EDITS:
+                continue
+
+            typed = []
+            for raw in edits:
+                e, err = parse_edit(raw)
+                if e is None:
+                    typed = []
+                    break
+                typed.append(e)
+            if not typed:
+                continue
+            applied = apply_edits(initial, typed)
+            if applied.errors or applied.applied != len(typed):
+                continue
+            sim = simulate(applied.layout)
+            if sim.green_science_rate <= 0:
+                continue
+
+            completion = json.dumps(edits, separators=(",", ":"))
+            return GeneratedPair(
+                seed=seed,
+                prompt=build_user_message(initial),
+                completion=completion,
+                sim_gs_rate=sim.green_science_rate,
+                n_assemblers=len(assemblers),
+                tiers=tuple(a.tier for a in assemblers),
+                mode="full",
+            )
+    return None
 
 
 def _partial_from_full(pair: GeneratedPair, seed: int, variant: int) -> GeneratedPair | None:
