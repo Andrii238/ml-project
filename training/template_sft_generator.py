@@ -602,20 +602,22 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
         for y in range(1, max(output_ys) + 1):
             add_cv(0, y, "north")
 
-        # Shared input bus. Both input chests start in the corner and feed
-        # short vertical trunks that merge into the horizontal two-lane bus.
-        for y in range(1, input_bus_y):
-            add_cv(2, y, "south")
-            add_cv(3, y, "south")
-        for x in range(2, max_x + 1):
-            add_cv(x, input_bus_y, "east")
-
         # Output buses. The relaxed simulator rule lets assemblers output onto
         # adjacent empty/science conveyors, so west-flowing buses beside each row
         # collect science directly and carry it into the output trunk.
         for y in output_ys:
             for x in range(1, max_x + 1):
                 add_cv(x, y, "west")
+
+        # Shared input bus. Both input chests start in the corner and feed
+        # short vertical trunks that merge into the horizontal two-lane bus.
+        # This comes after output routing so truncated generations are more
+        # likely to include the delivery path.
+        for y in range(1, input_bus_y):
+            add_cv(2, y, "south")
+            add_cv(3, y, "south")
+        for x in range(2, max_x + 1):
+            add_cv(x, input_bus_y, "east")
     except ValueError:
         return None
 

@@ -1,5 +1,8 @@
 from harness.evaluator import evaluate_policy
 from harness.qwen_policy import QwenPolicy
+from training.reward_wrapper import layout_from_prompt, reward_breakdown
+from harness.edit_applier import apply_edits
+from harness.edit_parser import parse_edits
 from training.template_sft_generator import build_template_dataset
 
 
@@ -45,6 +48,18 @@ def main() -> None:
         print("edits_applied:", sample.edits_applied)
         print("green_science_rate:", sample.green_science_rate)
         print("reward:", sample.reward)
+
+        print("\nREWARD BREAKDOWN:")
+        print(reward_breakdown(row["prompt"], sample.completion))
+
+        layout = layout_from_prompt(row["prompt"])
+        parsed = parse_edits(sample.completion)
+        if layout is not None:
+            applied = apply_edits(layout, parsed.edits)
+            print("\nAPPLY ERRORS:")
+            print(applied.errors)
+            print("\nFINAL GRID:")
+            print(applied.layout.render_ascii())
 
 
 if __name__ == "__main__":
