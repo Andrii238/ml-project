@@ -1,20 +1,12 @@
-# Colab install list.
-#
-# NOTES:
-# - bitsandbytes NOT pinned — we install a working version separately in the
-#   notebook after this file. Transformers requires SOME bitsandbytes metadata
-#   to be present or it errors during import.
-# - vllm NOT pinned — Colab preinstalls a compatible version. Pinning it
-#   causes dep-resolver conflicts with accelerate/torch/etc.
-# - mergekit + llm_blender are REQUIRED because trl's GRPOTrainer hard-imports
-#   them via callbacks.py. Even if we set use_vllm=False, the imports happen
-#   at module load.
-
-transformers==4.46.3
-trl==0.15.2
-peft==0.13.2
-accelerate==1.1.1
-datasets==3.1.0
+# Minimum-pinning install. Let pip resolve versions.
+# All packages required to import trl.GRPOTrainer are listed (trl hard-imports
+# mergekit and llm_blender at module load; we install them so imports succeed).
+transformers
+trl
+peft
+accelerate
+datasets
 mergekit
 llm_blender
-pydantic>=2.7
+bitsandbytes
+pydantic
