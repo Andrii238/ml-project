@@ -41,6 +41,7 @@ class RewardConfig:
     milestone_is_producing:  float = 2.0
 
     # 4. Delivered green-science (main term).
+    milestone_delivers_any: float = 20.0
     delivered_reward: float = 100.0  # per pack/sec
 
     # 5. Produced-but-not-delivered partial credit.
@@ -86,6 +87,7 @@ class RewardBreakdown:
     milestone_belts: float = 0.0
     milestone_inserters: float = 0.0
     milestone_producing: float = 0.0
+    milestone_delivered: float = 0.0
     delivered: float = 0.0
     produced_partial: float = 0.0
     machine_cost: float = 0.0
@@ -144,6 +146,8 @@ def compute_reward(layout: Layout, sim: SimResult | None = None,
     br.milestone_producing = config.milestone_is_producing * n_producing
 
     # 4. Delivered green science
+    if sim.green_science_rate > 0:
+        br.milestone_delivered = config.milestone_delivers_any
     br.delivered = config.delivered_reward * sim.green_science_rate
 
     # 5. Produced but not delivered
@@ -184,7 +188,7 @@ def compute_reward(layout: Layout, sim: SimResult | None = None,
     br.total = (
         br.do_nothing + br.chest_missing
         + br.milestone_belts + br.milestone_inserters + br.milestone_producing
-        + br.delivered + br.produced_partial
+        + br.milestone_delivered + br.delivered + br.produced_partial
         + br.machine_cost + br.conveyor_cost
         + br.asm_tier_unlock + br.conv_tier_unlock
         + br.random_bonus

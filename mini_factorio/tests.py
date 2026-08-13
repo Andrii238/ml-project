@@ -470,13 +470,14 @@ def test_reward_full_chain_asm1_produces_and_delivers():
     lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
     br = compute_reward(lay, config=_no_random_config())
     # asm-1: crafts_per_sec = 0.5/6 ≈ 0.0833.
+    # delivered milestone = 20 because at least one science reaches the output chest.
     # delivered = 100 * 0.0833 ≈ 8.333.
     # milestones: has_belts + has_inserters + is_producing = 1 + 1 + 2 = 4.
     # machine_cost = -1.06 (one asm-1).
     # conveyor_cost = -0.06 * 3 = -0.18 (three T1 conveyors).
     # do-nothing / chest_missing = 0.
     # tier unlocks = 0 (asm-1 + T1 conveyors only).
-    expected = 8.333333333 + 4.0 - 1.06 - 0.18
+    expected = 20.0 + 8.333333333 + 4.0 - 1.06 - 0.18
     assert abs(br.total - expected) < 1e-3, (br.total, expected)
 
 
@@ -485,7 +486,7 @@ def test_reward_asm3_triggers_tier_unlock():
     br = compute_reward(lay, config=_no_random_config())
     # asm-3 unlock = -18. asm-3 cost = -8.94. Plus deliverd + milestones - conveyors.
     delivered = 100 * (1.25 / 6.0)
-    expected = delivered + 4.0 - 8.94 - 0.18 - 18.0
+    expected = 20.0 + delivered + 4.0 - 8.94 - 0.18 - 18.0
     assert abs(br.total - expected) < 1e-3, (br.total, expected)
 
 
@@ -528,8 +529,15 @@ def test_reward_produced_but_not_delivered_partial():
     lay.conveyors = [c for c in lay.conveyors if c.id != "cv_o"]
     br = compute_reward(lay, config=_no_random_config())
     # delivered = 0, but produced_partial = 5 * 0.0833.
+    assert br.milestone_delivered == 0.0
     assert br.delivered == 0.0
     assert br.produced_partial > 0
+
+
+def test_reward_one_time_delivery_bonus():
+    lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
+    br = compute_reward(lay, config=_no_random_config())
+    assert br.milestone_delivered == 20.0
 
 
 def test_reward_breakdown_sums_to_total():
@@ -537,8 +545,9 @@ def test_reward_breakdown_sums_to_total():
     br = compute_reward(lay)
     parts = (br.do_nothing + br.chest_missing + br.milestone_belts
              + br.milestone_inserters + br.milestone_producing + br.delivered
-             + br.produced_partial + br.machine_cost + br.conveyor_cost
-             + br.asm_tier_unlock + br.conv_tier_unlock + br.random_bonus)
+             + br.milestone_delivered + br.produced_partial + br.machine_cost
+             + br.conveyor_cost + br.asm_tier_unlock + br.conv_tier_unlock
+             + br.random_bonus)
     assert abs(parts - br.total) < 1e-9
 
 
