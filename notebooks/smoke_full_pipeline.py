@@ -91,8 +91,20 @@ def main() -> int:
         "--out", "results/smoke_full_pipeline.json",
     ])
 
+    run([
+        sys.executable, "-m", "training.evaluate",
+        "--checkpoints", f"policy_sft={args.sft_dir}",
+        f"policy_grpo={args.grpo_dir}",
+        "--samples-per-layout", "4",
+        "--n-val", str(args.n_val),
+        "--temperature", "1.0",
+        "--max-new-tokens", "512",
+        "--out", "results/smoke_sampled_pipeline.json",
+    ])
+
     print("\nSmoke pipeline finished.")
     print("Main file: results/smoke_full_pipeline.json")
+    print("Sampled file: results/smoke_sampled_pipeline.json")
     return 0
 
 
