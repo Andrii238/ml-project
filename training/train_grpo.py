@@ -33,13 +33,13 @@ class GRPOConfig:
     output_dir: str = "./ckpts/grpo"
 
     # GRPO hyperparameters
-    num_generations: int = 8            # G — group size
+    num_generations: int = 6            # G — group size
     temperature: float = 0.8
     max_new_tokens: int = 512
     max_prompt_length: int | None = None
     beta: float = 0.04
     learning_rate: float = 1e-6
-    max_steps: int = 200
+    max_steps: int = 100
     save_steps: int = 50
     per_device_batch_size: int = 2
     gradient_accumulation_steps: int = 4
@@ -209,13 +209,13 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--model-name", default=DEFAULT_MODEL)
     ap.add_argument("--sft-adapter", "--init-adapter", dest="sft_adapter", default=None)
     ap.add_argument("--output-dir", default="./ckpts/grpo")
-    ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=8)
+    ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=6)
     ap.add_argument("--temperature", type=float, default=0.8)
     ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=512)
     ap.add_argument("--max-prompt-length", type=int, default=None)
     ap.add_argument("--beta", type=float, default=0.04)
     ap.add_argument("--learning-rate", type=float, default=1e-6)
-    ap.add_argument("--max-steps", type=int, default=200)
+    ap.add_argument("--max-steps", type=int, default=100)
     ap.add_argument("--save-steps", type=int, default=50)
     ap.add_argument("--per-device-batch-size", type=int, default=2)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=4)
