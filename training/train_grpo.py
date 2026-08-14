@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from harness.prompt_builder import SYSTEM_MESSAGE
+from harness.qwen_policy import has_complete_json_array
 from training.data import TRAIN_SEEDS
 from training.reward_wrapper import reward_fn
 
@@ -67,6 +68,49 @@ def prepare_prompt_dataset():
     return Dataset.from_list(prompts)
 
 
+def _install_json_array_stopper(model: Any, tokenizer: Any) -> None:
+    """Make TRL generation stop once every sample has closed its JSON array.
+
+    `QwenPolicy.generate` already has this guard for evaluation. GRPOTrainer,
+    however, calls `model.generate(...)` directly, so without this hook GRPO can
+    waste tokens up to max_completion_length even when a valid JSON array was
+    already produced.
+    """
+    from transformers import StoppingCriteria, StoppingCriteriaList
+
+    original_generate = model.generate
+
+    class StopAfterJsonArray(StoppingCriteria):
+        def __init__(self, start_len: int):
+            self.start_len = start_len
+
+        def __call__(self, input_ids, scores, **kwargs) -> bool:
+            for seq in input_ids:
+                text = tokenizer.decode(seq[self.start_len:],
+                                        skip_special_tokens=True)
+                if not has_complete_json_array(text):
+                    return False
+            return True
+
+    def generate_with_json_stop(*args: Any, **kwargs: Any):
+        input_ids = kwargs.get("input_ids")
+        if input_ids is None and args:
+            input_ids = args[0]
+        if input_ids is None:
+            return original_generate(*args, **kwargs)
+
+        stopper = StopAfterJsonArray(start_len=input_ids.shape[1])
+        existing = kwargs.get("stopping_criteria")
+        if existing is None:
+            kwargs["stopping_criteria"] = StoppingCriteriaList([stopper])
+        else:
+            existing.append(stopper)
+            kwargs["stopping_criteria"] = existing
+        return original_generate(*args, **kwargs)
+
+    model.generate = generate_with_json_stop
+
+
 def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
     if config is None:
         config = GRPOConfig(**overrides)
@@ -101,6 +145,8 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
     if config.sft_adapter is not None:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, config.sft_adapter, is_trainable=True)
+
+    _install_json_array_stopper(model, tokenizer)
 
     lora_config = LoraConfig(
         r=config.lora_rank,
