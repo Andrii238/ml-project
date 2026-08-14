@@ -42,7 +42,7 @@ class GRPOConfig:
     max_steps: int = 100
     save_steps: int = 50
     per_device_batch_size: int = 2
-    gradient_accumulation_steps: int = 4
+    gradient_accumulation_steps: int = 3
 
     # LoRA
     lora_rank: int = 16
@@ -123,6 +123,17 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
     from peft import LoraConfig
     from transformers import AutoTokenizer, AutoModelForCausalLM
     from trl import GRPOConfig as TRLGRPOConfig, GRPOTrainer
+
+    effective_batch = config.per_device_batch_size * config.gradient_accumulation_steps
+    if effective_batch % config.num_generations != 0:
+        raise ValueError(
+            "GRPO effective batch must be divisible by group size: "
+            f"per_device_batch_size({config.per_device_batch_size}) * "
+            f"gradient_accumulation_steps({config.gradient_accumulation_steps}) = "
+            f"{effective_batch}, group_size={config.num_generations}. "
+            "For group_size=6 use per_device_batch_size=2 and "
+            "gradient_accumulation_steps=3."
+        )
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
@@ -218,7 +229,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--max-steps", type=int, default=100)
     ap.add_argument("--save-steps", type=int, default=50)
     ap.add_argument("--per-device-batch-size", type=int, default=2)
-    ap.add_argument("--gradient-accumulation-steps", type=int, default=4)
+    ap.add_argument("--gradient-accumulation-steps", type=int, default=3)
     ap.add_argument("--lora-rank", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
