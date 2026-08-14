@@ -58,6 +58,11 @@ def trim_after_first_json_array(text: str) -> str:
     return text[start:]
 
 
+def has_complete_json_array(text: str) -> bool:
+    """True once text contains a balanced top-level JSON array."""
+    return trim_after_first_json_array(text).rstrip().endswith("]")
+
+
 @dataclass
 class QwenPolicy:
     model_name: str = DEFAULT_MODEL
@@ -134,6 +139,20 @@ class QwenPolicy:
             enc = self._tokenizer(chats, return_tensors="pt", padding=True,
                                    truncation=True, max_length=8192).to(
                 self._model.device)
+            start_len = enc["input_ids"].shape[1]
+
+            from transformers import StoppingCriteria, StoppingCriteriaList
+
+            class StopAfterJsonArray(StoppingCriteria):
+                def __call__(self, input_ids, scores, **kwargs) -> bool:
+                    for seq in input_ids:
+                        text = self_tok.decode(seq[start_len:],
+                                               skip_special_tokens=True)
+                        if not has_complete_json_array(text):
+                            return False
+                    return True
+
+            self_tok = self._tokenizer
             with torch.no_grad():
                 out = self._model.generate(
                     **enc,
@@ -143,6 +162,7 @@ class QwenPolicy:
                     top_p=top_p,
                     eos_token_id=self._tokenizer.eos_token_id,
                     pad_token_id=self._tokenizer.pad_token_id,
+                    stopping_criteria=StoppingCriteriaList([StopAfterJsonArray()]),
                 )
             for j, seq in enumerate(out):
                 # Strip the prompt tokens; decode only new tokens.
