@@ -840,7 +840,7 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
     - 1-2 assembler full/partial pair,
     - 3-4 assembler full/partial pair,
     - 5-6 assembler full/partial pair,
-    - another 4-6 assembler full/partial pair.
+    - 8-9 assembler two-row full/partial pair.
     The 25x25 grid gives these examples enough width to teach higher-flow
     layouts without relying on brittle multi-row conveyor crossings.
     """
@@ -859,7 +859,7 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
         (1 + (seed % 2), "horizontal"),
         (3 + (seed % 2), "horizontal"),
         (5 + (seed % 2), "horizontal"),
-        (4 + ((seed + 1) % 3), "horizontal"),
+        (8 + (seed % 2), "horizontal"),
     ]
 
     variant = 0
@@ -884,9 +884,9 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
                 )
             if add_pair(full, variant + 1):
                 made = True
-                variant += 2
+                variant += 1
                 break
-            variant += 2
+            variant += 1
         if not made and kind == "horizontal":
             continue
 

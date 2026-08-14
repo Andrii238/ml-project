@@ -45,11 +45,11 @@ class RewardConfig:
     delivered_reward: float = 300.0  # per pack/sec
 
     # 5. Produced-but-not-delivered partial credit.
-    produced_partial_reward: float = 3.0  # per pack/sec
+    produced_partial_reward: float = 100.0  # per pack/sec
 
     # 6. Per-machine cost (dollar-based).
     asm_cost: dict[AssemblerTier, float] = field(default_factory=lambda: {
-        1: 0.53, 2: 1.61, 3: 4.47,
+        1: 0.53, 2: 3.22, 3: 8.94,
     })
 
     # 7. Per-conveyor tile cost (dollar-based).

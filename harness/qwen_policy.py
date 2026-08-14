@@ -26,6 +26,38 @@ from harness.prompt_builder import SYSTEM_MESSAGE
 DEFAULT_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 
 
+def trim_after_first_json_array(text: str) -> str:
+    """Return text through the first balanced JSON array, dropping suffix junk.
+
+    The model is trained to end after a JSON array, but small LoRA adapters can
+    still continue generating. Evaluation and GRPO only need the array.
+    """
+    start = text.find("[")
+    if start < 0:
+        return text
+    depth = 0
+    in_string = False
+    escaped = False
+    for i, ch in enumerate(text[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return text[start:]
+
+
 @dataclass
 class QwenPolicy:
     model_name: str = DEFAULT_MODEL
@@ -116,8 +148,8 @@ class QwenPolicy:
                 # Strip the prompt tokens; decode only new tokens.
                 prompt_len = enc["input_ids"][j].shape[0]
                 new = seq[prompt_len:]
-                completions.append(self._tokenizer.decode(
-                    new, skip_special_tokens=True))
+                raw = self._tokenizer.decode(new, skip_special_tokens=True)
+                completions.append(trim_after_first_json_array(raw))
         return completions
 
     def __call__(self, prompt: str, **kwargs: Any) -> str:
