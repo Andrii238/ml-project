@@ -42,7 +42,7 @@ class RewardConfig:
 
     # 4. Delivered green-science (main term).
     milestone_delivers_any: float = 20.0
-    delivered_reward: float = 300.0  # per pack/sec
+    delivered_reward: float = 500.0  # per pack/sec
 
     # 5. Produced-but-not-delivered partial credit.
     produced_partial_reward: float = 100.0  # per pack/sec
