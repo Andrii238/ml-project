@@ -1,7 +1,5 @@
 # Factorio Green-Science Policy Improvement
 
-Internship evaluation project.
-
 Main writeup: [`writeup/github_page_draft.md`](writeup/github_page_draft.md).
 
 ## Setup
