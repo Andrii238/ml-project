@@ -39,7 +39,9 @@ Because the green-science recipe uses `1 transport belt + 1 inserter`, it usuall
 
 I use JSON instead of a raw number matrix because it is easier for the model to understand.
 
-FLE (1000+ stars on github) validation is the check against the reference game environment. In this project version, I built the simulator and the export path; the remaining validation step is to export top layouts, run them in FLE, and compare our simulator output with FLE output.
+FLE (1000+ stars on github) validation is the check against the reference game environment. I built a translator/driver that exports our layouts into FLE, adds the needed power setup, sets recipes, runs the game, and measures real production. On a hand-built validation layout, my simulator reported `0.3125` items/sec and FLE measured `0.3117` items/sec, only about `0.3%` error. So the simulator is not just arbitrary math; it was checked against the reference engine on a controlled case.
+
+The remaining limitation is that I did not fully FLE-validate every final GRPO layout. The learning/evaluation tables below are measured in the custom simulator/harness.
 
 ## Task 3: Improving the LLM Policy
 
