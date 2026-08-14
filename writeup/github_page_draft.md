@@ -39,7 +39,7 @@ Because the green-science recipe uses `1 transport belt + 1 inserter`, it usuall
 
 I use JSON instead of a raw number matrix because it is easier for the model to understand.
 
-FLE (1000+ stars on github) validation is the check against the reference game environment. The plan is to export top layouts, run them in FLE, and compare our simulator output with FLE output. TODO: add FLE correlation / MAE after final validation.
+FLE (1000+ stars on github) validation is the check against the reference game environment. In this project version, I built the simulator and the export path; the remaining validation step is to export top layouts, run them in FLE, and compare our simulator output with FLE output.
 
 ## Task 3: Improving the LLM Policy
 
@@ -53,21 +53,21 @@ The base model is not good at this task. It can produce valid-looking JSON, but 
 
 SFT is important because GRPO needs the model to produce at least somewhat useful attempts. If every sampled layout gets zero reward, the RL signal is very weak.
 
-The SFT dataset has `480` training examples:
+The SFT dataset has `446` verified training examples:
 
 - half are empty chest-only maps where the model builds everything
 - half are partial maps where some assemblers or conveyor lines were deleted and the model repairs them
-- examples contain `1` to `8` assemblers
+- examples contain `1` to `9` assemblers depending on the template
 - every target example is checked by the simulator and produces green science
 
 After SFT, results on validation:
 
 | Policy | Mean reward | Green science/sec | Parse OK | Valid output |
 |---|---:|---:|---:|---:|
-| Base policy | -1.720 | 0.0000 | 100% | 100% |
-| SFT policy | 46.089 | 0.6146 | 100% | 100% |
+| Base policy | -0.752 | 0.0000 | 100% | 100% |
+| SFT policy | 495.483 | 1.0417 | 100% | 100% |
 
-So SFT moved the model from zero green-science production to `0.6146` science/sec on validation, with `100%` parse and validity rate. Clear and huge improvement. 
+So SFT moved the model from zero green-science production to `1.0417` science/sec on validation, with `100%` parse and validity rate. Clear and huge improvement. 
 
 ## GRPO Step
 
@@ -78,13 +78,27 @@ For the same prompt, the model generates several candidate answers. We score eac
 In my run:
 
 1. Give the model one layout prompt.
-2. Sample `4` possible JSON outputs.
+2. Sample `8` possible JSON outputs.
 3. Run each output through the simulator.
 4. Calculate reward.
 5. Compare rewards inside the group.
 6. Update the LoRA adapter toward better outputs.
+7. Save intermediate policies at steps `25`, `50`, `75`, and final.
 
-TODO: add final GRPO result after training finishes.
+Final deterministic checkpoint evaluation:
+
+| Policy | Mean reward | Green science/sec | Machines | Materials | Parse OK | Valid output |
+|---|---:|---:|---:|---:|---:|---:|
+| Base policy | -0.752 | 0.0000 | 1.00 | 8.4 | 100% | 100% |
+| SFT policy | 495.483 | 1.0417 | 5.00 | 60.0 | 100% | 100% |
+| GRPO 25 | 495.483 | 1.0417 | 5.00 | 60.0 | 100% | 100% |
+| GRPO 50 | 577.973 | 1.2187 | 5.85 | 66.0 | 100% | 100% |
+| GRPO 75 | 558.564 | 1.1771 | 5.65 | 64.5 | 100% | 100% |
+| GRPO final | 592.530 | 1.2500 | 6.00 | 67.0 | 100% | 100% |
+
+Final GRPO improved over SFT by `+97.047` reward and `+0.2083` green science/sec, about `20%`.
+
+The sampled-policy diagnostic also improved strongly: sampled mean reward went from `170.676` to `592.404`, and sampled green science went from `0.3151` to `1.25`.
 
 ## Reward Function
 
@@ -94,26 +108,27 @@ The main reward is still green science delivered to the output chest.
 
 Reward terms:
 
-- `+100 * green_science_rate`
+- `+500 * green_science_rate`
 - `+20` once if any green science is delivered
-- `+1` for each assembler receiving transport belts
-- `+1` for each assembler receiving inserters
-- `+2` for each assembler producing science
-- `+5 * produced_but_not_delivered_rate`
+- `+0.5` for each assembler receiving transport belts
+- `+0.5` for each assembler receiving inserters
+- `+1` for each assembler producing science
+- `+100 * produced_but_not_delivered_rate`
 
 Penalties/costs:
 
 - `-30` if no assembler is placed
 - `-10` for each missing required chest
-- assembler cost: tier 1 `1.06`, tier 2 `3.22`, tier 3 `8.94`
-- conveyor cost: tier 1 `0.06`, tier 2 `0.46`, tier 3 `1.26`
-- tier unlock penalties: assembler tier 2 `6.5`, assembler tier 3 `18.0`, conveyor tier 2 `0.9`, conveyor tier 3 `2.5`
+- assembler cost: tier 1 `0.53`, tier 2 `3.22`, tier 3 `8.94`
+- conveyor cost: tier 1 `0.03`, tier 2 `0.23`, tier 3 `0.63`
+- tier unlock penalties: assembler tier 2 `3.25`, assembler tier 3 `9.0`, conveyor tier 2 `0.45`, conveyor tier 3 `1.25`
+- random bonus is disabled
 
 ## Notes and Possible Improvements
 
 I run everything on Google Colab.
 
-I use the 1.5B model mainly because it is fast. A 7B Qwen model would be smarter and better at the layout JSON, but it would make training and GRPO slower. Since the 1.5B model already shows clear improvement after SFT, I used it.
+I use the 1.5B model mainly because it is fast. A 7B Qwen model would be smarter and better at the layout JSON, but it would make training and GRPO slower. Since the 1.5B model already shows clear improvement after SFT and GRPO, I used it.
 
 Possible improvements:
 

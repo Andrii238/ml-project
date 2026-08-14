@@ -1,0 +1,74 @@
+[
+  {
+    "name": "policy_sft",
+    "det_reward": 495.483,
+    "det_green": 1.0417,
+    "sample_reward": 170.676,
+    "sample_std": 130.017,
+    "sample_green": 0.3151,
+    "sample_max_reward": 495.483,
+    "sample_max_green": 1.0417,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  },
+  {
+    "name": "grpo_25",
+    "det_reward": 495.483,
+    "det_green": 1.0417,
+    "sample_reward": 412.633,
+    "sample_std": 108.265,
+    "sample_green": 0.8568,
+    "sample_max_reward": 592.53,
+    "sample_max_green": 1.25,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  },
+  {
+    "name": "grpo_50",
+    "det_reward": 580.399,
+    "det_green": 1.224,
+    "sample_reward": 550.072,
+    "sample_std": 48.143,
+    "sample_green": 1.1589,
+    "sample_max_reward": 592.53,
+    "sample_max_green": 1.25,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  },
+  {
+    "name": "grpo_75",
+    "det_reward": 556.137,
+    "det_green": 1.1719,
+    "sample_reward": 550.072,
+    "sample_std": 48.143,
+    "sample_green": 1.1589,
+    "sample_max_reward": 592.53,
+    "sample_max_green": 1.25,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  },
+  {
+    "name": "grpo_100",
+    "det_reward": 592.53,
+    "det_green": 1.25,
+    "sample_reward": 592.404,
+    "sample_std": 3.314,
+    "sample_green": 1.25,
+    "sample_max_reward": 606.393,
+    "sample_max_green": 1.25,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  },
+  {
+    "name": "policy_grpo_final",
+    "det_reward": 592.53,
+    "det_green": 1.25,
+    "sample_reward": 592.404,
+    "sample_std": 3.314,
+    "sample_green": 1.25,
+    "sample_max_reward": 606.393,
+    "sample_max_green": 1.25,
+    "det_valid_pct": 100.0,
+    "sample_valid_pct": 100.0
+  }
+]
