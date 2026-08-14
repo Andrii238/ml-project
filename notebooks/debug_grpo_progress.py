@@ -49,6 +49,10 @@ def _merge(det_rows: list[dict[str, Any]], sampled_rows: list[dict[str, Any]]) -
     out = []
     for d in det_rows:
         s = by_name[d["name"]]
+        per = s.get("_per_sample", [])
+        max_sample_reward = max((p["reward"] for p in per), default=s["mean_reward"])
+        max_sample_green = max((p["green_science_rate"] for p in per),
+                               default=s["mean_green_science"])
         out.append({
             "name": d["name"],
             "adapter": d["adapter"],
@@ -58,6 +62,8 @@ def _merge(det_rows: list[dict[str, Any]], sampled_rows: list[dict[str, Any]]) -
             "sample_reward": s["mean_reward"],
             "sample_std": s["std_reward"],
             "sample_green": s["mean_green_science"],
+            "sample_max_reward": round(max_sample_reward, 3),
+            "sample_max_green": round(max_sample_green, 4),
             "sample_valid_pct": s["valid_output_pct"],
             "n_det": d["n"],
             "n_sample": s["n"],
@@ -68,7 +74,8 @@ def _merge(det_rows: list[dict[str, Any]], sampled_rows: list[dict[str, Any]]) -
 def _print_table(rows: list[dict[str, Any]]) -> None:
     cols = [
         "name", "det_reward", "det_green", "sample_reward", "sample_std",
-        "sample_green", "det_valid_pct", "sample_valid_pct",
+        "sample_green", "sample_max_reward", "sample_max_green",
+        "det_valid_pct", "sample_valid_pct",
     ]
     widths = {c: max(len(c), *(len(str(r[c])) for r in rows)) for c in cols}
     print(" | ".join(c.ljust(widths[c]) for c in cols))
@@ -102,7 +109,10 @@ def main() -> int:
         max_new_tokens=args.max_new_tokens,
         temperature=1.0,
     )
-    rows = _merge(_rows(det), _rows(sampled))
+    sampled_rows = _rows(sampled)
+    for row, result in zip(sampled_rows, sampled):
+        row["_per_sample"] = [vars(s) for s in result.summary.per_sample]
+    rows = _merge(_rows(det), sampled_rows)
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
