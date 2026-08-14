@@ -28,7 +28,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Run a small SFT -> GRPO -> eval smoke pipeline.")
     ap.add_argument("--sft-epochs", type=int, default=1)
     ap.add_argument("--grpo-steps", type=int, default=12)
-    ap.add_argument("--group-size", type=int, default=4)
+    ap.add_argument("--group-size", type=int, default=8)
     ap.add_argument("--n-val", type=int, default=8)
     ap.add_argument("--samples-per-layout", type=int, default=1)
     ap.add_argument("--sft-dir", default="./ckpts/smoke_sft")
@@ -58,6 +58,10 @@ def main() -> int:
         "--out", "results/smoke_after_sft.json",
     ])
 
+    if args.group_size % 2 != 0:
+        raise ValueError("smoke expects an even group size because per-device batch is fixed at 2")
+    grad_accum = args.group_size // 2
+
     run([
         sys.executable, "-m", "training.train_grpo",
         "--sft-adapter", args.sft_dir,
@@ -66,7 +70,7 @@ def main() -> int:
         "--save-steps", str(args.grpo_steps),
         "--group-size", str(args.group_size),
         "--per-device-batch-size", "2",
-        "--gradient-accumulation-steps", "2",
+        "--gradient-accumulation-steps", str(grad_accum),
         "--max-new-tokens", "512",
         "--max-prompt-length", "3500",
     ])
