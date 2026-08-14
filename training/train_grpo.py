@@ -40,7 +40,7 @@ class GRPOConfig:
     beta: float = 0.04
     learning_rate: float = 1e-6
     max_steps: int = 100
-    save_steps: int = 50
+    save_steps: int = 25
     per_device_batch_size: int = 2
     gradient_accumulation_steps: int = 3
 
@@ -227,7 +227,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--beta", type=float, default=0.04)
     ap.add_argument("--learning-rate", type=float, default=1e-6)
     ap.add_argument("--max-steps", type=int, default=100)
-    ap.add_argument("--save-steps", type=int, default=50)
+    ap.add_argument("--save-steps", type=int, default=25)
     ap.add_argument("--per-device-batch-size", type=int, default=2)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=3)
     ap.add_argument("--lora-rank", type=int, default=16)
