@@ -32,6 +32,7 @@ class SFTConfig:
     per_device_batch_size: int = 4
     gradient_accumulation_steps: int = 2
     learning_rate: float = 2e-4
+    max_steps: int = -1
     lora_rank: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
@@ -122,6 +123,7 @@ def train(config: SFTConfig | None = None, **overrides: Any) -> None:
         per_device_eval_batch_size=config.per_device_batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         learning_rate=config.learning_rate,
+        max_steps=config.max_steps,
         max_seq_length=config.max_seq_length,
         bf16=config.dtype == "bfloat16",
         fp16=config.dtype == "float16",
@@ -167,6 +169,7 @@ def _parse_args() -> SFTConfig:
     ap.add_argument("--per-device-batch-size", type=int, default=4)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=2)
     ap.add_argument("--learning-rate", type=float, default=2e-4)
+    ap.add_argument("--max-steps", type=int, default=-1)
     ap.add_argument("--lora-rank", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
