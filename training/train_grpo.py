@@ -33,7 +33,7 @@ class GRPOConfig:
     output_dir: str = "./ckpts/grpo"
 
     # GRPO hyperparameters
-    num_generations: int = 6            # G — group size
+    num_generations: int = 8            # G — group size
     temperature: float = 1.0
     max_new_tokens: int = 512
     max_prompt_length: int | None = None
@@ -42,7 +42,7 @@ class GRPOConfig:
     max_steps: int = 100
     save_steps: int = 25
     per_device_batch_size: int = 2
-    gradient_accumulation_steps: int = 3
+    gradient_accumulation_steps: int = 4
 
     # LoRA
     lora_rank: int = 16
@@ -131,8 +131,8 @@ def train(config: GRPOConfig | None = None, **overrides: Any) -> None:
             f"per_device_batch_size({config.per_device_batch_size}) * "
             f"gradient_accumulation_steps({config.gradient_accumulation_steps}) = "
             f"{effective_batch}, group_size={config.num_generations}. "
-            "For group_size=6 use per_device_batch_size=2 and "
-            "gradient_accumulation_steps=3."
+            "For group_size=8 use per_device_batch_size=2 and "
+            "gradient_accumulation_steps=4."
         )
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
@@ -220,7 +220,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--model-name", default=DEFAULT_MODEL)
     ap.add_argument("--sft-adapter", "--init-adapter", dest="sft_adapter", default=None)
     ap.add_argument("--output-dir", default="./ckpts/grpo")
-    ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=6)
+    ap.add_argument("--group-size", "--num-generations", dest="num_generations", type=int, default=8)
     ap.add_argument("--temperature", type=float, default=1.0)
     ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=512)
     ap.add_argument("--max-prompt-length", type=int, default=None)
@@ -229,7 +229,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--max-steps", type=int, default=100)
     ap.add_argument("--save-steps", type=int, default=25)
     ap.add_argument("--per-device-batch-size", type=int, default=2)
-    ap.add_argument("--gradient-accumulation-steps", type=int, default=3)
+    ap.add_argument("--gradient-accumulation-steps", type=int, default=4)
     ap.add_argument("--lora-rank", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
