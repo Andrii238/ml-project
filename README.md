@@ -28,9 +28,18 @@ uv sync --extra notebook --extra dev --extra llm
 
 ## Run
 
+Task 1 runs locally on CPU. Task 2 and Task 3 need the `[llm]` extra and a GPU; I ran them on Google Colab.
+
 ```bash
-# Task 1 tests
+# Task 1 — tests + notebook
 uv run pytest task1_gridworld/
-# Task 1 notebook
 uv run jupyter lab notebooks/task1_policy_iteration.ipynb
+
+# Task 2 — baseline eval (needs [llm] extra + GPU)
+uv run jupyter lab notebooks/task2_baseline_eval.ipynb
+
+# Task 3 — SFT + GRPO training (Colab)
+uv run jupyter lab notebooks/task3_grpo_training.ipynb
+# Final results
+uv run jupyter lab notebooks/final_results.ipynb
 ```
