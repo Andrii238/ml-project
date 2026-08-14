@@ -8,7 +8,8 @@ Colab usage:
     from training.train_grpo import train
     train(sft_adapter='/content/ckpts/sft', output_dir='/content/ckpts/grpo')
 
-Hyperparameters mirror `plan.md` §Task 3 (group size 8, β 0.04, LR 5e-5,
+Hyperparameters mirror DeepSeekMath-style conservative RL (group size 8,
+β 0.04, LR 1e-6,
 ~200 optimizer steps per iteration). Adjustable via `GRPOConfig`.
 """
 from __future__ import annotations
@@ -37,7 +38,7 @@ class GRPOConfig:
     max_new_tokens: int = 512
     max_prompt_length: int | None = None
     beta: float = 0.04
-    learning_rate: float = 5e-5
+    learning_rate: float = 1e-6
     max_steps: int = 200
     save_steps: int = 50
     per_device_batch_size: int = 2
@@ -213,7 +214,7 @@ def _parse_args() -> GRPOConfig:
     ap.add_argument("--max-new-tokens", "--max-completion-length", dest="max_new_tokens", type=int, default=512)
     ap.add_argument("--max-prompt-length", type=int, default=None)
     ap.add_argument("--beta", type=float, default=0.04)
-    ap.add_argument("--learning-rate", type=float, default=5e-5)
+    ap.add_argument("--learning-rate", type=float, default=1e-6)
     ap.add_argument("--max-steps", type=int, default=200)
     ap.add_argument("--save-steps", type=int, default=50)
     ap.add_argument("--per-device-batch-size", type=int, default=2)
