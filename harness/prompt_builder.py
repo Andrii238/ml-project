@@ -98,7 +98,7 @@ def render_entity_list(layout: Layout) -> str:
 SYSTEM_MESSAGE = (
     "You design a factory layout to produce green science packs. "
     "You emit JSON edits that place entities on the provided grid. "
-    "Follow the schema exactly. Use no more than 20 edits. "
+    "Follow the schema exactly. Use no more than 25 edits. "
     "Reply with the JSON array only, no prose."
 )
 
@@ -151,7 +151,7 @@ GOAL_MESSAGE = (
     "Goal: use the existing chests, then place assemblers and conveyors so green-science packs "
     "flow from producing assemblers to the output-science chest. Maximizing delivered rate "
     "of green science to the output chest is the main and most important objective. "
-    "Higher tiers cost more and unlock a one-time penalty. Use no more than 15 edits.\n"
+    "Higher tiers cost more and unlock a one-time penalty. Use no more than 25 edits.\n"
 )
 
 
