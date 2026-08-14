@@ -32,7 +32,9 @@ try:
 except ImportError:  # pragma: no cover
     factorio_rcon = None  # type: ignore
 
-from .to_fle import TranslatedEntity, TranslationResult
+from mini_factorio.layout import Layout
+
+from .to_fle import TranslatedEntity, TranslationResult, translate
 
 
 # --------------------------------------------------------------- config
@@ -117,6 +119,25 @@ class CrossCheckResult:
             "sim_rate": self.sim_science_rate,
             "rel_error": self.error,
         }
+
+
+@dataclass
+class PerLayoutCrossCheck:
+    layout_id: str
+    build_success: bool
+    sim_rate: float
+    fle_rate: float | None
+    rel_error: float | None
+    build_errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CrossCheckReport:
+    per_layout: list[PerLayoutCrossCheck]
+    build_success_rate: float
+    pearson_r: float | None
+    mape: float | None
+    ship_gates: dict[str, bool]
 
 
 def _connect(host: str, port: int, password: str):
@@ -371,6 +392,88 @@ def chest_map_from_layout(layout) -> dict[tuple[float, float], str]:
     """Build a `chest_map` (tile-center → kind) for a Layout, suitable for
     passing to `validate_and_measure(chest_map=...)`."""
     return {(c.x + 0.5, c.y + 0.5): c.kind for c in layout.chests}
+
+
+def _pearson(xs: list[float], ys: list[float]) -> float | None:
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+    mx = sum(xs) / len(xs)
+    my = sum(ys) / len(ys)
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    if vx == 0 or vy == 0:
+        return None
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    return cov / ((vx * vy) ** 0.5)
+
+
+def cross_check(entries: Iterable[tuple[str, Layout, float]], *,
+                measurement_seconds: float = 60.0,
+                warmup_seconds: float = 120.0,
+                game_speed: int = 100,
+                host: str = DEFAULT_HOST,
+                port: int = DEFAULT_PORT,
+                password: str = DEFAULT_PASSWORD) -> CrossCheckReport:
+    """Translate layouts, build/measure them in FLE, and summarize agreement.
+
+    `warmup_seconds` is accepted for compatibility with the CLI contract; the
+    current throttled driver measures after build with controlled input rates.
+    """
+    del warmup_seconds
+    rows: list[PerLayoutCrossCheck] = []
+    for layout_id, layout, sim_rate in entries:
+        tr = translate(layout)
+        result = validate_and_measure(
+            tr,
+            host=host,
+            port=port,
+            password=password,
+            duration_seconds=measurement_seconds,
+            game_speed=game_speed,
+            sim_rate=sim_rate,
+            chest_rates={
+                "input-belts": layout.chest_rates.belts,
+                "input-inserters": layout.chest_rates.inserters,
+            },
+            chest_map=chest_map_from_layout(layout),
+        )
+        rows.append(PerLayoutCrossCheck(
+            layout_id=layout_id,
+            build_success=result.build.build_success,
+            sim_rate=sim_rate,
+            fle_rate=result.measure.fle_science_rate if result.measure else None,
+            rel_error=result.error,
+            build_errors=result.build.build_errors,
+        ))
+
+    n = len(rows)
+    build_success_rate = (
+        sum(1 for r in rows if r.build_success) / n
+        if n else 0.0
+    )
+    comparable = [r for r in rows if r.fle_rate is not None]
+    sim_values = [r.sim_rate for r in comparable]
+    fle_values = [r.fle_rate for r in comparable if r.fle_rate is not None]
+    pearson_r = _pearson(sim_values, fle_values)
+    mape = None
+    if comparable:
+        mape = sum(
+            abs((r.fle_rate or 0.0) - r.sim_rate) / max(abs(r.fle_rate or 0.0), 1e-6)
+            for r in comparable
+        ) / len(comparable)
+
+    ship_gates = {
+        "build_success_100pct": build_success_rate == 1.0,
+        "pearson_r_ge_0_9": pearson_r is not None and pearson_r >= 0.9,
+        "mape_le_0_2": mape is not None and mape <= 0.2,
+    }
+    return CrossCheckReport(
+        per_layout=rows,
+        build_success_rate=build_success_rate,
+        pearson_r=pearson_r,
+        mape=mape,
+        ship_gates=ship_gates,
+    )
 
 
 def smoke_test(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT,

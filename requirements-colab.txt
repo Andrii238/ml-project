@@ -7,3 +7,4 @@ datasets>=4.0
 pydantic>=2.7
 peft>=0.17
 trl>=0.24
+pandas>=2.0

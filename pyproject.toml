@@ -15,6 +15,7 @@ notebook = [
     "jupyter>=1.0",
     "ipykernel>=6.29",
     "ipywidgets>=8.1",
+    "pandas>=2.0",
 ]
 llm = [
     "transformers>=4.45",
