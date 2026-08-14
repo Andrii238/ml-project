@@ -66,13 +66,14 @@ def main() -> int:
     if args.group_size % 2 != 0:
         raise ValueError("smoke expects an even group size because per-device batch is fixed at 2")
     grad_accum = args.group_size // 2
+    grpo_save_steps = max(1, args.grpo_steps // 3)
 
     run([
         sys.executable, "-m", "training.train_grpo",
         "--sft-adapter", args.sft_dir,
         "--output-dir", args.grpo_dir,
         "--max-steps", str(args.grpo_steps),
-        "--save-steps", str(args.grpo_steps),
+        "--save-steps", str(grpo_save_steps),
         "--group-size", str(args.group_size),
         "--learning-rate", "5e-5",
         "--per-device-batch-size", "2",
@@ -102,9 +103,20 @@ def main() -> int:
         "--out", "results/smoke_sampled_pipeline.json",
     ])
 
+    run([
+        sys.executable, "notebooks/debug_grpo_progress.py",
+        "--sft-dir", args.sft_dir,
+        "--grpo-dir", args.grpo_dir,
+        "--n-val", str(min(args.n_val, 4)),
+        "--sampled-per-layout", "4",
+        "--max-new-tokens", "512",
+        "--out", "results/smoke_grpo_progress.json",
+    ])
+
     print("\nSmoke pipeline finished.")
     print("Main file: results/smoke_full_pipeline.json")
     print("Sampled file: results/smoke_sampled_pipeline.json")
+    print("GRPO progress file: results/smoke_grpo_progress.json")
     return 0
 
 
