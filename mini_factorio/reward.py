@@ -36,32 +36,32 @@ class RewardConfig:
     )
 
     # 3. Milestone reward per assembler.
-    milestone_has_belts:     float = 1.0
-    milestone_has_inserters: float = 1.0
-    milestone_is_producing:  float = 2.0
+    milestone_has_belts:     float = 0.5
+    milestone_has_inserters: float = 0.5
+    milestone_is_producing:  float = 1.0
 
     # 4. Delivered green-science (main term).
     milestone_delivers_any: float = 20.0
-    delivered_reward: float = 100.0  # per pack/sec
+    delivered_reward: float = 300.0  # per pack/sec
 
     # 5. Produced-but-not-delivered partial credit.
-    produced_partial_reward: float = 5.0  # per pack/sec
+    produced_partial_reward: float = 3.0  # per pack/sec
 
     # 6. Per-machine cost (dollar-based).
     asm_cost: dict[AssemblerTier, float] = field(default_factory=lambda: {
-        1: 1.06, 2: 3.22, 3: 8.94,
+        1: 0.53, 2: 1.61, 3: 4.47,
     })
 
     # 7. Per-conveyor tile cost (dollar-based).
     conv_cost: dict[ConveyorTier, float] = field(default_factory=lambda: {
-        1: 0.06, 2: 0.46, 3: 1.26,
+        1: 0.03, 2: 0.23, 3: 0.63,
     })
 
     # 8. One-time tier-unlock penalties.
-    asm_tier2_unlock: float = 6.5
-    asm_tier3_unlock: float = 18.0
-    conv_tier2_unlock: float = 0.9
-    conv_tier3_unlock: float = 2.5
+    asm_tier2_unlock: float = 3.25
+    asm_tier3_unlock: float = 9.0
+    conv_tier2_unlock: float = 0.45
+    conv_tier3_unlock: float = 1.25
 
     # 9. Random exploration bonus.
     #    Per-i draw: U(0, upper / (1 + decay * i)) for the i-th placed entity.

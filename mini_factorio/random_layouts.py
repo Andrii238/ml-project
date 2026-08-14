@@ -1,8 +1,9 @@
 """Random episode generator for the simplified green-science env.
 
-Per-episode chest emission rate: drawn from
-    0.9 * Uniform(0, 3) + 0.1 * Uniform(3, 5)
-independently for the belts chest and the inserters chest.
+Per-episode chest emission rate: drawn from a bucketed curriculum:
+    0.5, 1, 2, 4, 8, 12 items/sec, with small jitter.
+Both input chests use the same base rate because green science consumes
+transport belts and inserters 1:1.
 
 Two starting-layout modes:
 - `empty_episode(seed)`: only the three fixed top-left chests are placed.
@@ -23,23 +24,22 @@ from .layout import Assembler, Chest, ChestRates, Conveyor, Layout, DEFAULT_GRID
 
 # --------------------------------------------------------------- rates
 
-# Per-episode chest emission rate distribution.
-CHEST_RATE_LOW_UPPER = 3.0
-CHEST_RATE_HIGH_UPPER = 5.0
-CHEST_RATE_HIGH_PROB = 0.1
+# Per-episode chest emission rate curriculum.
+CHEST_RATE_BUCKETS = (0.5, 1.0, 2.0, 4.0, 8.0, 12.0)
+CHEST_RATE_JITTER = 0.08
 
 
 def sample_chest_rate(rng: random.Random) -> float:
-    """One draw from `0.9*U(0,3) + 0.1*U(3,5)` items/sec."""
-    if rng.random() < CHEST_RATE_HIGH_PROB:
-        return rng.uniform(CHEST_RATE_LOW_UPPER, CHEST_RATE_HIGH_UPPER)
-    return rng.uniform(0.0, CHEST_RATE_LOW_UPPER)
+    """One draw from the bucketed rate curriculum."""
+    base = rng.choice(CHEST_RATE_BUCKETS)
+    return base * rng.uniform(1.0 - CHEST_RATE_JITTER, 1.0 + CHEST_RATE_JITTER)
 
 
 def sample_chest_rates(rng: random.Random) -> ChestRates:
+    rate = sample_chest_rate(rng)
     return ChestRates(
-        belts=sample_chest_rate(rng),
-        inserters=sample_chest_rate(rng),
+        belts=rate,
+        inserters=rate,
     )
 
 

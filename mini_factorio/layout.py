@@ -1,7 +1,7 @@
 """Layout schema, validation, and JSON I/O for the simplified env.
 
 Coordinate system: (x, y). x increases east, y increases south (top-left origin).
-Grid is 20x20 by default (see plan.md).
+Grid is 25x25 by default.
 
 Entities:
 - Chest         : 1x1, one of {input-belts, input-inserters, output-science}
@@ -37,7 +37,7 @@ from .entities import (
 )
 
 
-DEFAULT_GRID = (20, 20)
+DEFAULT_GRID = (25, 25)
 
 
 class Chest(BaseModel):

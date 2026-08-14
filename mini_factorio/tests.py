@@ -49,9 +49,8 @@ from harness.edit_schema import (
 )
 from translator.to_fle import FACTORIO_DIRECTION, translate
 from .random_layouts import (
-    CHEST_RATE_HIGH_PROB,
-    CHEST_RATE_HIGH_UPPER,
-    CHEST_RATE_LOW_UPPER,
+    CHEST_RATE_BUCKETS,
+    CHEST_RATE_JITTER,
     empty_episode,
     partial_episode,
     sample_chest_rate,
@@ -119,8 +118,8 @@ def test_lane_capacity_by_tier():
     assert CONVEYOR_LANE_CAPACITY[3] == 45.0
 
 
-def test_default_grid_20x20():
-    assert _empty_layout().grid_size == DEFAULT_GRID == (20, 20)
+def test_default_grid_25x25():
+    assert _empty_layout().grid_size == DEFAULT_GRID == (25, 25)
 
 
 def test_assembler_footprint_3x3():
@@ -469,25 +468,35 @@ def test_reward_missing_only_output_chest():
 
 def test_reward_full_chain_asm1_produces_and_delivers():
     lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
-    br = compute_reward(lay, config=_no_random_config())
+    cfg = _no_random_config()
+    br = compute_reward(lay, config=cfg)
     # asm-1: crafts_per_sec = 0.5/6 ≈ 0.0833.
-    # delivered milestone = 20 because at least one science reaches the output chest.
-    # delivered = 100 * 0.0833 ≈ 8.333.
-    # milestones: has_belts + has_inserters + is_producing = 1 + 1 + 2 = 4.
-    # machine_cost = -1.06 (one asm-1).
-    # conveyor_cost = -0.06 * 3 = -0.18 (three T1 conveyors).
-    # do-nothing / chest_missing = 0.
-    # tier unlocks = 0 (asm-1 + T1 conveyors only).
-    expected = 20.0 + 8.333333333 + 4.0 - 1.06 - 0.18
+    expected = (
+        cfg.milestone_delivers_any
+        + cfg.delivered_reward * (0.5 / 6.0)
+        + cfg.milestone_has_belts
+        + cfg.milestone_has_inserters
+        + cfg.milestone_is_producing
+        - cfg.asm_cost[1]
+        - cfg.conv_cost[1] * 3
+    )
     assert abs(br.total - expected) < 1e-3, (br.total, expected)
 
 
 def test_reward_asm3_triggers_tier_unlock():
     lay = _simple_chain_layout(tier=3, belts_rate=5.0, inserters_rate=5.0)
-    br = compute_reward(lay, config=_no_random_config())
-    # asm-3 unlock = -18. asm-3 cost = -8.94. Plus deliverd + milestones - conveyors.
-    delivered = 100 * (1.25 / 6.0)
-    expected = 20.0 + delivered + 4.0 - 8.94 - 0.18 - 18.0
+    cfg = _no_random_config()
+    br = compute_reward(lay, config=cfg)
+    expected = (
+        cfg.milestone_delivers_any
+        + cfg.delivered_reward * (1.25 / 6.0)
+        + cfg.milestone_has_belts
+        + cfg.milestone_has_inserters
+        + cfg.milestone_is_producing
+        - cfg.asm_cost[3]
+        - cfg.conv_cost[1] * 3
+        - cfg.asm_tier3_unlock
+    )
     assert abs(br.total - expected) < 1e-3, (br.total, expected)
 
 
@@ -495,13 +504,13 @@ def test_reward_conveyor_tier_unlock_fires():
     lay = _simple_chain_layout(tier=1, belts_rate=5.0, inserters_rate=5.0)
     # Bump one conveyor to T2 (red).
     lay.conveyors[0].tier = 2
-    br = compute_reward(lay, config=_no_random_config())
-    # T2 belt unlock = -0.9. Per-tile cost for T2 = -0.46 (replacing 0.06).
-    # Net vs baseline: -0.9 (unlock) + (-0.46 - (-0.06)) = -0.9 - 0.40 = -1.30.
+    cfg = _no_random_config()
+    br = compute_reward(lay, config=cfg)
     baseline = compute_reward(_simple_chain_layout(tier=1, belts_rate=5.0,
                                                      inserters_rate=5.0),
-                                config=_no_random_config()).total
-    assert abs(br.total - (baseline - 1.30)) < 1e-3
+                                config=cfg).total
+    net_penalty = cfg.conv_tier2_unlock + (cfg.conv_cost[2] - cfg.conv_cost[1])
+    assert abs(br.total - (baseline - net_penalty)) < 1e-3
 
 
 def test_reward_random_bonus_is_deterministic():
@@ -568,19 +577,20 @@ def test_reward_config_can_swap_coefficients():
 def test_chest_rate_distribution_within_bounds():
     rng = _random.Random(0)
     samples = [sample_chest_rate(rng) for _ in range(1000)]
+    lo = min(CHEST_RATE_BUCKETS) * (1.0 - CHEST_RATE_JITTER)
+    hi = max(CHEST_RATE_BUCKETS) * (1.0 + CHEST_RATE_JITTER)
     for s in samples:
-        assert 0.0 <= s <= CHEST_RATE_HIGH_UPPER, s
+        assert lo <= s <= hi, s
 
 
-def test_chest_rate_distribution_high_bucket_frequency():
-    """~10% of samples should fall in the [3, 5] range."""
+def test_chest_rate_distribution_uses_all_buckets():
+    """Bucketed curriculum should cover low, medium, and high flow regimes."""
     rng = _random.Random(0)
     N = 10_000
     samples = [sample_chest_rate(rng) for _ in range(N)]
-    hi = sum(1 for s in samples if s > CHEST_RATE_LOW_UPPER)
-    freq = hi / N
-    # Expected 0.10, with ±0.015 tolerance for N=10k.
-    assert abs(freq - CHEST_RATE_HIGH_PROB) < 0.015, freq
+    assert any(s < 1.0 for s in samples)
+    assert any(3.5 < s < 4.5 for s in samples)
+    assert any(s > 10.0 for s in samples)
 
 
 def test_empty_episode_has_three_chests_no_other_entities():
@@ -634,8 +644,10 @@ def test_different_seeds_differ():
 def test_chest_rates_sampled_per_episode():
     lay = empty_episode(seed=0)
     # Rates should be within bounds.
-    assert 0.0 <= lay.chest_rates.belts <= CHEST_RATE_HIGH_UPPER
-    assert 0.0 <= lay.chest_rates.inserters <= CHEST_RATE_HIGH_UPPER
+    hi = max(CHEST_RATE_BUCKETS) * (1.0 + CHEST_RATE_JITTER)
+    assert 0.0 <= lay.chest_rates.belts <= hi
+    assert 0.0 <= lay.chest_rates.inserters <= hi
+    assert lay.chest_rates.belts == lay.chest_rates.inserters
 
 
 # ================================================================
@@ -1075,7 +1087,7 @@ def test_translator_no_entities_gives_empty_result():
     lay = Layout()
     res = translate(lay)
     assert res.entities == []
-    assert res.grid_size == (20, 20)
+    assert res.grid_size == (25, 25)
 
 
 def test_translator_output_dict_serializable():

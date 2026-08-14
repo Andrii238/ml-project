@@ -22,7 +22,7 @@ from harness.edit_parser import MAX_EDITS
 from harness.edit_schema import parse_edit
 from harness.prompt_builder import build_user_message
 from mini_factorio.entities import DIR_DELTA, Direction
-from mini_factorio.layout import Assembler, Chest, ChestRates, Conveyor, Layout
+from mini_factorio.layout import DEFAULT_GRID, Assembler, Chest, ChestRates, Conveyor, Layout
 from mini_factorio.random_layouts import empty_episode, sample_chest_rates
 from mini_factorio.simulator import simulate
 
@@ -69,7 +69,7 @@ def _in_bounds(t: tuple[int, int], grid: tuple[int, int]) -> bool:
     return 0 <= t[0] < grid[0] and 0 <= t[1] < grid[1]
 
 
-def _paired_input_episode(seed: int, grid_size: tuple[int, int] = (20, 20)) -> Layout:
+def _paired_input_episode(seed: int, grid_size: tuple[int, int] = DEFAULT_GRID) -> Layout:
     """Controlled chest-only episode.
 
     Inputs are adjacent near one corner; output is near the opposite corner.
@@ -331,7 +331,7 @@ def _make_chest_layout(rng: random.Random, assemblers: list[_AsmSpec],
     )
 
 
-def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = DEFAULT_GRID) -> GeneratedPair | None:
     """Build a full solution from a random chest-only episode.
 
     This deliberately matches evaluation: the prompt starts with random chest
@@ -464,7 +464,7 @@ def _build_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20
     return None
 
 
-def _build_small_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+def _build_small_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = DEFAULT_GRID) -> GeneratedPair | None:
     """Small 1-2 assembler clustered-chest bus template."""
     return _build_bus_full_pair(seed, variant, min_assemblers=1, max_assemblers=2, grid=grid)
 
@@ -539,7 +539,7 @@ def _transform_layout_and_edits(initial: Layout, edits: list[dict], *, rng: rand
     return out_initial, out_edits
 
 
-def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_assemblers: int, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_assemblers: int, grid: tuple[int, int] = DEFAULT_GRID) -> GeneratedPair | None:
     """Clustered-chest assembler bus template.
 
     The template keeps all chests in the same corner/side region and builds a
@@ -551,17 +551,18 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
     """
     rng = random.Random(seed * 3253 + variant * 2017 + 503)
     n_assemblers = rng.randint(min_assemblers, max_assemblers)
-    rows = 1 if n_assemblers <= 4 else 2
+    rows = 1 if n_assemblers <= 6 else 2
     cols = math.ceil(n_assemblers / rows)
     x0 = 4
     top_y = 7 if rows == 1 else 4
     row_gap = 4
+    col_gap = 3 if rows == 1 else 4
     tiers = _choose_tiers(rng, n_assemblers)
     rates = sample_chest_rates(rng)
 
     input_bus_y = top_y - 1 if rows == 1 else top_y + 3
     output_ys = [top_y + 3] if rows == 1 else [top_y - 1, top_y + row_gap + 3]
-    max_x = x0 + (cols - 1) * 4 + 2
+    max_x = x0 + (cols - 1) * col_gap + 2
     if max_x >= grid[0] or max(output_ys + [input_bus_y]) >= grid[1]:
         return None
 
@@ -580,7 +581,7 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
         row = i // cols
         col = i % cols
         a = _AsmSpec(id=f"gen_a{i + 1}", tier=tiers[i],
-                     x=x0 + col * 4, y=top_y + row * row_gap)
+                     x=x0 + col * col_gap, y=top_y + row * row_gap)
         assemblers.append(a)
         edits.append({"op": "place_assembler", "id": a.id, "tier": a.tier,
                       "x": a.x, "y": a.y})
@@ -651,7 +652,115 @@ def _build_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_as
     )
 
 
-def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = (20, 20)) -> GeneratedPair | None:
+def _build_vertical_bus_full_pair(seed: int, variant: int, *, min_assemblers: int, max_assemblers: int, grid: tuple[int, int] = DEFAULT_GRID) -> GeneratedPair | None:
+    """Vertical assembler-bus template.
+
+    This keeps the same fixed chest positions but teaches a different geometry:
+    input ingredients merge into a vertical bus on the left of the assemblers,
+    and science is collected by a vertical output bus on the right.
+    """
+    rng = random.Random(seed * 4523 + variant * 2671 + 907)
+    n_assemblers = rng.randint(min_assemblers, max_assemblers)
+    tiers = _choose_tiers(rng, n_assemblers)
+    rates = sample_chest_rates(rng)
+
+    columns = 1 if n_assemblers <= 6 else 2
+    rows = math.ceil(n_assemblers / columns)
+    x0s = [7, 14][:columns]
+    top_y = 5
+    row_gap = 3
+    bus_y = top_y - 1
+    max_y = top_y + (rows - 1) * row_gap + 2
+    out_y = max_y + 1
+    input_xs = [x - 1 for x in x0s]
+    output_xs = [x + 3 for x in x0s]
+    if out_y >= grid[1] or max(output_xs) >= grid[0]:
+        return None
+
+    initial = Layout(
+        grid_size=grid,
+        chest_rates=rates,
+        chests=[
+            Chest(id="chest_output-science", kind="output-science", x=0, y=0),
+            Chest(id="chest_input-belts", kind="input-belts", x=2, y=0),
+            Chest(id="chest_input-inserters", kind="input-inserters", x=3, y=0),
+        ],
+    )
+
+    edits: list[dict] = []
+    assemblers: list[_AsmSpec] = []
+    for i in range(n_assemblers):
+        col = i // rows
+        row = i % rows
+        a = _AsmSpec(id=f"gen_a{i + 1}", tier=tiers[i],
+                     x=x0s[col], y=top_y + row * row_gap)
+        assemblers.append(a)
+        edits.append({"op": "place_assembler", "id": a.id, "tier": a.tier,
+                      "x": a.x, "y": a.y})
+
+    line_keys: set[tuple[int, int, int, int]] = set()
+
+    def add_line(from_x: int, from_y: int, to_x: int, to_y: int, *, tier: int = 1) -> None:
+        if not _in_bounds((from_x, from_y), grid) or not _in_bounds((to_x, to_y), grid):
+            raise ValueError("conveyor line endpoint out of bounds")
+        if from_x != to_x and from_y != to_y:
+            raise ValueError("conveyor line must be straight")
+        if from_x == to_x and from_y == to_y:
+            raise ValueError("conveyor line must be nonzero")
+        key = (from_x, from_y, to_x, to_y)
+        if key in line_keys:
+            return
+        line_keys.add(key)
+        edits.append({"op": "place_conveyor_line", "id": f"gen_l{len(line_keys)}",
+                      "tier": tier, "from_x": from_x, "from_y": from_y,
+                      "to_x": to_x, "to_y": to_y})
+
+    try:
+        # Output route: vertical collector -> bottom horizontal line -> output trunk.
+        # Route below the input trunks so science never shares a tile with recipe
+        # ingredients.
+        add_line(0, out_y + 1, 0, 0)
+        add_line(max(output_xs) + 1, out_y, 0, out_y)
+        for output_x in output_xs:
+            add_line(output_x, bus_y - 1, output_x, out_y + 1)
+
+        # Input route: fixed chests down, merge right, then vertical input bus.
+        add_line(2, 0, 2, bus_y + 1)
+        add_line(3, 0, 3, bus_y + 1)
+        add_line(1, bus_y, max(input_xs) + 1, bus_y)
+        for input_x in input_xs:
+            add_line(input_x, bus_y - 1, input_x, max_y + 1)
+    except ValueError:
+        return None
+
+    if len(edits) > MAX_EDITS:
+        return None
+
+    typed = []
+    for raw in edits:
+        e, err = parse_edit(raw)
+        if e is None:
+            return None
+        typed.append(e)
+    applied = apply_edits(initial, typed)
+    if applied.errors or applied.applied != len(typed):
+        return None
+    sim = simulate(applied.layout)
+    if sim.green_science_rate <= 0:
+        return None
+
+    return GeneratedPair(
+        seed=seed,
+        prompt=build_user_message(initial),
+        completion=json.dumps(edits, separators=(",", ":")),
+        sim_gs_rate=sim.green_science_rate,
+        n_assemblers=n_assemblers,
+        tiers=tuple(a.tier for a in assemblers),
+        mode="full",
+    )
+
+
+def _build_large_bus_full_pair(seed: int, variant: int, *, grid: tuple[int, int] = DEFAULT_GRID) -> GeneratedPair | None:
     """Large 3-8 assembler clustered-chest bus template."""
     return _build_bus_full_pair(seed, variant, min_assemblers=3, max_assemblers=8, grid=grid)
 
@@ -728,9 +837,12 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
     For the active 8 variants, all examples use the locked task distribution:
     chests clustered in one corner/side, model places assemblers/conveyors only.
     Target mix per seed:
-    - 1 small 1-2 assembler full/partial pair,
-    - 3 large 3-8 assembler full/partial pairs.
-    Large target sizes are cycled deterministically so the dataset covers 3-8.
+    - 1-2 assembler full/partial pair,
+    - 3-4 assembler full/partial pair,
+    - 5-6 assembler full/partial pair,
+    - another 4-6 assembler full/partial pair.
+    The 25x25 grid gives these examples enough width to teach higher-flow
+    layouts without relying on brittle multi-row conveyor crossings.
     """
     out: list[GeneratedPair] = []
 
@@ -744,10 +856,10 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
         return True
 
     targets = [
-        (1 + (seed % 2), "small"),
-        (3 + (seed % 6), "large"),
-        (3 + ((seed + 2) % 6), "large"),
-        (3 + ((seed + 4) % 6), "large"),
+        (1 + (seed % 2), "horizontal"),
+        (3 + (seed % 2), "horizontal"),
+        (5 + (seed % 2), "horizontal"),
+        (4 + ((seed + 1) % 3), "horizontal"),
     ]
 
     variant = 0
@@ -755,19 +867,27 @@ def build_template_pairs(seed: int, *, variants: int = 4) -> list[dict]:
         if len(out) >= variants:
             break
         made = False
-        for _ in range(300):
-            full = _build_bus_full_pair(
-                seed,
-                variant,
-                min_assemblers=n_assemblers,
-                max_assemblers=n_assemblers,
-            )
+        for _ in range(30):
+            if kind == "vertical":
+                full = _build_vertical_bus_full_pair(
+                    seed,
+                    variant,
+                    min_assemblers=n_assemblers,
+                    max_assemblers=n_assemblers,
+                )
+            else:
+                full = _build_bus_full_pair(
+                    seed,
+                    variant,
+                    min_assemblers=n_assemblers,
+                    max_assemblers=n_assemblers,
+                )
             if add_pair(full, variant + 1):
                 made = True
                 variant += 2
                 break
             variant += 2
-        if not made and kind == "small":
+        if not made and kind == "horizontal":
             continue
 
     return [

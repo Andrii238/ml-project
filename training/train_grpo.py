@@ -53,14 +53,18 @@ class GRPOConfig:
 
 
 def prepare_prompt_dataset():
-    """HF Dataset with one column `prompt`, seeded by TRAIN_SEEDS."""
-    from datasets import Dataset
-    from mini_factorio.random_layouts import empty_episode
-    from harness.prompt_builder import build_user_message
+    """HF Dataset with one column `prompt`, seeded by TRAIN_SEEDS.
 
-    rows = [{"prompt": build_user_message(empty_episode(seed=s))}
-            for s in TRAIN_SEEDS]
-    return Dataset.from_list(rows)
+    Uses the same generated-task distribution as SFT: full empty-build prompts
+    and partial-repair prompts. This gives GRPO both construction and editing
+    practice instead of only chest-empty layouts.
+    """
+    from datasets import Dataset
+    from training.template_sft_generator import build_template_dataset
+
+    prompts = [{"prompt": r["prompt"]}
+               for r in build_template_dataset(TRAIN_SEEDS, variants_per_seed=4)]
+    return Dataset.from_list(prompts)
 
 
 def train(config: GRPOConfig | None = None, **overrides: Any) -> None:

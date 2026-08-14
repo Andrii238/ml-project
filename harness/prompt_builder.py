@@ -97,8 +97,8 @@ def render_entity_list(layout: Layout) -> str:
 
 SYSTEM_MESSAGE = (
     "You design a factory layout to produce green science packs. "
-    "You emit JSON edits that place entities on a 20x20 grid. "
-    "Follow the schema exactly. Use no more than 15 edits. "
+    "You emit JSON edits that place entities on the provided grid. "
+    "Follow the schema exactly. Use no more than 20 edits. "
     "Reply with the JSON array only, no prose."
 )
 
@@ -136,7 +136,7 @@ def _render_rates(layout: Layout) -> str:
 EDIT_VOCAB_SUMMARY = (
     "Edit vocabulary (details in schema):\n"
     "  {\"op\":\"place_assembler\", \"tier\":1|2|3, \"x\":int, \"y\":int, \"id\":str} "
-    "where x,y are the 3x3 top-left anchor and must satisfy 0<=x<=17, 0<=y<=17\n"
+    "where x,y are the 3x3 top-left anchor and must keep the whole footprint inside the grid\n"
     "  {\"op\":\"place_conveyor_line\", \"tier\":1|2|3, \"from_x\":int, \"from_y\":int,"
     " \"to_x\":int, \"to_y\":int, \"id\":str} for one straight horizontal/vertical belt line. "
     "The endpoints are excluded; conveyor direction is inferred from from->to.\n"
