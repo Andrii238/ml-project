@@ -26,6 +26,7 @@ lora_adapters/
 runs/
 outputs/
 wandb/
+ckpts/
 
 # Data — factoriolab_data.json IS committed for reproducibility
 # but downloaded model weights are not
