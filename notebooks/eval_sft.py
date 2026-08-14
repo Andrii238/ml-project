@@ -8,7 +8,7 @@ subprocess.run([
     sys.executable, "-m", "training.evaluate",
     "--checkpoints", "policy_0=BASE", "policy_1=./ckpts/sft",
     "--samples-per-layout", "4",
-    "--n-val", "20",
+    "--n-val", "40",
     "--out", "results/eval_sft_vs_base.json",
 ], check=True)
 
