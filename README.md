@@ -1,6 +1,8 @@
 # Factorio Green-Science Policy Improvement
 
-Internship evaluation project. Full plan: [`plan.md`](plan.md).
+Internship evaluation project.
+
+Main writeup: [`writeup/github_page_draft.md`](writeup/github_page_draft.md).
 
 ## Setup
 
@@ -22,7 +24,7 @@ uv sync --extra notebook --extra dev --extra llm
 - `training/` — GRPO training + evaluation
 - `translator/` — Mini-Factorio JSON → Factorio blueprint (for FLE validation)
 - `notebooks/` — demos, evaluations, plots
-- `writeup/report.md` — final writeup
+- `writeup/github_page_draft.md` — main writeup
 
 ## Run
 
