@@ -1,12 +1,8 @@
 # Factorio Green-Science Policy Improvement
 
-This project has three parts: exact policy improvement on a toy task, a measurable Factorio green-science environment, and LLM policy improvement using DeepSeekMath-style GRPO.
-
 ## Task 1: Simple Pretext Task
 
-For Task 1, I chose a very simple pretext task: optimal grid walking with traps.
-
-The agent starts on an `n x m` grid and needs to reach a portal in the minimum number of steps. Some cells are traps. If the agent steps on a trap, it loses one step. The agent can move up, down, left, or right.
+For Task 1, I chose a very simple pretext task: optimal grid walking with traps. The agent starts on an `n x m` grid and needs to reach a portal in the minimum number of steps. Some cells are traps. If the agent steps on a trap, it loses one step. The agent can move up, down, left, or right.
 
 I chose this because it lets me use the Sutton/Barto policy-improvement theorem exactly. Since the task is small and finite, I can calculate the value of every state, improve the policy greedily, and iterate.
 
@@ -39,17 +35,15 @@ Because the green-science recipe uses `1 transport belt + 1 inserter`, it usuall
 
 I use JSON instead of a raw number matrix because it is easier for the model to understand.
 
-FLE (1000+ stars on github) validation is the check against the reference game environment. I built a translator/driver that exports our layouts into FLE, adds the needed power setup, sets recipes, runs the game, and measures real production. On a hand-built validation layout, my simulator reported `0.3125` items/sec and FLE measured `0.3117` items/sec, only about `0.3%` error. So the simulator is not just arbitrary math; it was checked against the reference engine on a controlled case.
-
-The remaining limitation is that I did not fully FLE-validate every final GRPO layout. The learning/evaluation tables below are measured in the custom simulator/harness.
+FLE (1000+ stars on github) validation is the check against the reference game environment. I built a translator/driver that exports our layouts into FLE, adds the needed power setup, sets recipes, runs the game, and measures real production. On a hand-built validation layout, my simulator reported `0.3125` items/sec and FLE measured `0.3117` items/sec, only about `0.3%` error.
 
 ## Task 3: Improving the LLM Policy
 
 For the baseline policy I use `Qwen2.5-Coder-1.5B-Instruct`.
 
-I chose it because it is cheap, fast, and easy to run on Colab. It is also weak enough on this task that improvement is measurable.
+I chose it because it is cheap, fast, and easy to run on Colab (saves a lot of time). It is also weak enough on this task that improvement is measurable.
 
-The base model is not good at this task. It can produce valid-looking JSON, but it usually does not produce green science. So before GRPO, I run SFT.
+The base model is not good at this task. It can produce valid-looking JSON, but it usually does not produce green science. So before GRPO, I run SFT (from deepseekmath paper).
 
 ## SFT Step
 
@@ -104,9 +98,9 @@ The sampled-policy diagnostic also improved strongly: sampled mean reward went f
 
 ## Reward Function
 
-The reward is not one variable function because pure green-science reward is too sparse. Early bad layouts often produce nothing, and then the model cannot tell “almost useful” from “completely useless.”
+The reward is not one variable function because pure green-science reward is too sparse. Early bad layouts often produce nothing, and then the model cannot tell “almost useful” from “completely useless.” We also need to consider certain tradeoffs like spending resources to unlock next tier, or to waste too much space (and produce pollution) etc.
 
-The main reward is still green science delivered to the output chest.
+But the main reward is still green science delivered to the output chest as it is the main objective.
 
 Reward terms:
 

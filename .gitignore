@@ -42,6 +42,7 @@ unfizzbuzzed_out.bin
 Task.pages
 Task descriptions/
 NEXT_SESSION.md
+FOLLOWUPS.md
 
 # Local-only artifacts we don't push to Colab
 ckpts/sft_dry/
