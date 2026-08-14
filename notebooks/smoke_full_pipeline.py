@@ -27,7 +27,8 @@ def run(cmd: list[str]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run a small SFT -> GRPO -> eval smoke pipeline.")
     ap.add_argument("--sft-epochs", type=int, default=1)
-    ap.add_argument("--sft-max-steps", type=int, default=10)
+    ap.add_argument("--sft-max-steps", type=int, default=-1,
+                    help="Optional SFT step cap. -1 means use full epoch.")
     ap.add_argument("--grpo-steps", type=int, default=12)
     ap.add_argument("--group-size", type=int, default=8)
     ap.add_argument("--n-val", type=int, default=8)
@@ -44,12 +45,14 @@ def main() -> int:
         shutil.rmtree(args.sft_dir, ignore_errors=True)
         shutil.rmtree(args.grpo_dir, ignore_errors=True)
 
-    run([
+    sft_cmd = [
         sys.executable, "-m", "training.train_sft",
         "--output-dir", args.sft_dir,
         "--num-train-epochs", str(args.sft_epochs),
-        "--max-steps", str(args.sft_max_steps),
-    ])
+    ]
+    if args.sft_max_steps > 0:
+        sft_cmd.extend(["--max-steps", str(args.sft_max_steps)])
+    run(sft_cmd)
 
     run([
         sys.executable, "-m", "training.evaluate",
@@ -71,6 +74,7 @@ def main() -> int:
         "--max-steps", str(args.grpo_steps),
         "--save-steps", str(args.grpo_steps),
         "--group-size", str(args.group_size),
+        "--learning-rate", "5e-5",
         "--per-device-batch-size", "2",
         "--gradient-accumulation-steps", str(grad_accum),
         "--max-new-tokens", "512",
